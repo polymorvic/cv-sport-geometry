@@ -1,7 +1,9 @@
 import os
 import cv2
+import random
+import colorsys
 import numpy as np
-
+from utils.lines import Line, LineGroup
 
 def get_pictures(path: str) -> dict[str, list[np.ndarray]]:
     """
@@ -82,3 +84,84 @@ def apply_hough_transformation(img_rgb: np.ndarray, blur_kernel_size: int = 5, c
 
     return img_copy, lines
 
+
+def group_lines(lines: list[Line], thresh_theta: float, thresh_intercept: float) -> list[LineGroup]:
+    """
+    Group similar Line objects into LineGroups based on orientation and position thresholds.
+
+    Args:
+        lines (list[Line]): A list of Line objects to group.
+        thresh_theta (float): Maximum allowed angle difference between lines to be in the same group.
+        thresh_intercept (float): Maximum allowed intercept difference (for non-vertical lines).
+
+    Returns:
+        list[LineGroup]: A list of LineGroup objects representing grouped lines.
+    """
+    groups = []
+
+    for line in lines:
+        for group in groups:
+            if group.process_line(line, thresh_theta, thresh_intercept):
+                break
+        else:
+            # No group matched, create a new group
+            groups.append(LineGroup([line]))
+
+    return groups
+
+
+def draw_line_group(img: np.ndarray, line_group: LineGroup, color: tuple[int, int, int], approx_color: tuple[int, int, int], approx_only: bool = True) -> np.ndarray:
+    """
+    Draw a LineGroup on an image.
+
+    Args:
+        img (np.ndarray): Input image to draw on.
+        line_group (LineGroup): The LineGroup to visualize.
+        color (tuple[int, int, int]): Color for individual lines (BGR).
+        approx_color (tuple[int, int, int]): Color for the approximated line (BGR).
+        approx_only (bool): If True, only draw the approximated line. Defaults to True.
+
+    Returns:
+        np.ndarray: A copy of the image with drawn lines.
+    """
+    img_copy = img.copy()
+
+    if not approx_only:
+        for line in line_group.lines:
+            p1, p2 = line.limit_to_img(img_copy)
+            cv2.line(img_copy, p1, p2, color, thickness=1)
+
+    p1, p2 = line_group.limit_to_img(img_copy)
+    cv2.line(img_copy, p1, p2, approx_color, thickness=2)
+
+    return img_copy
+
+
+def generate_similar_color_pairs(n: int = 10) -> list[tuple[tuple[int, int, int], tuple[int, int, int]]]:
+    """
+    Generate 'n' pairs of similar colors for visualization.
+    Each pair shares the same hue and brightness, but differs in saturation.
+
+    Args:
+        n (int): Number of color pairs to generate. Defaults to 10.
+
+    Returns:
+        list: A list of (color1, color2) pairs in BGR format (integers in 0-255).
+    """
+    color_pairs = []
+    for _ in range(n):
+        h = random.random()         
+        v = random.uniform(0.6, 1.0)   
+        s_low = random.uniform(0.1, 0.4)
+        s_high = random.uniform(0.7, 1.0)
+
+        rgb1 = tuple(int(c * 255) for c in colorsys.hsv_to_rgb(h, s_low, v))
+        rgb2 = tuple(int(c * 255) for c in colorsys.hsv_to_rgb(h, s_high, v))
+
+        # convert to bgr for opencv
+        bgr1 = rgb1[::-1]
+        bgr2 = rgb2[::-1]
+
+        color_pairs.append((bgr1, bgr2))
+
+    return color_pairs
