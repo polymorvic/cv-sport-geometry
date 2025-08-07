@@ -4,7 +4,8 @@ import numpy as np
 
 
 def get_pictures(path: str) -> dict[str, list[np.ndarray]]:
-    """Loads all valid image files from a directory and returns their representations in RGB, HSV, and grayscale formats.
+    """
+    Loads all valid image files from a directory and returns their representations in RGB, HSV, and grayscale formats.
     Only files with extensions '.jpg', '.jpeg', '.png' are considered. Unreadable files are skipped.
 
     Args:
@@ -41,16 +42,17 @@ def get_pictures(path: str) -> dict[str, list[np.ndarray]]:
 
 
 def apply_hough_transformation(img_rgb: np.ndarray, blur_kernel_size: int = 5, canny_thresh_lower: int = 50, canny_thresh_upper: int = 150, hough_thresh: int = 100, hough_min_line_len: int = 100, hough_max_line_gap: int = 10) -> tuple[np.ndarray, list]:
-    """It applies probabilistic Hough line transformation to given RGB image
-        process of applying hough transformation to the image is as follows:
-            - creating copy of original image,
-            - then copy is converted to gray scale, 
-            - later the gaussian blur filter is applied to the gray scaled image
-            - on the blurred image Canny's edges detection is processed
-            - on the binary image that contains the detected edges Hough transformation is processed to get lines,
-                if any detected, it contains two points - both ends of line, between them we can plot strainght line
+    """
+    It applies probabilistic Hough line transformation to given RGB image
+    process of applying hough transformation to the image is as follows:
+        - creating copy of original image,
+        - then copy is converted to gray scale, 
+        - later the gaussian blur filter is applied to the gray scaled image
+        - on the blurred image Canny's edges detection is processed
+        - on the binary image that contains the detected edges Hough transformation is processed to get lines,
+            if any detected, it contains two points - both ends of line, between them we can plot strainght line
 
-        In HoughLinesP function - constant values of 1 and np.pi/180 indicates respectively rho and theta parameters that dont need to be tuned
+    In HoughLinesP function - constant values of 1 and np.pi/180 indicates respectively rho and theta parameters that dont need to be tuned
 
     Args:
         img_rgb (np.ndarray): an RGB image
