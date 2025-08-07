@@ -12,6 +12,12 @@ class Line:
         slope (float | None): The slope (a) of the line. None if the line is vertical.
         intercept (float | None): The y-intercept (b) of the line. None if the line is vertical.
         xv (float | None): The constant x-value for vertical lines. None if the line is not vertical.
+
+    Note:
+        This class overloads `__eq__` and `__hash__` methods based on a unique key composed of the slope,
+        intercept, and xv attributes. This allows Line objects to be added to hash-based collections like sets
+        or used as dictionary keys. The equality comparison between Line instances is performed based on
+        the attributes defined in the internal __key method.
     """
     
 
@@ -322,5 +328,75 @@ class Line:
     
 
 
+class LineGroup(Line):
+    """
+    A group of Line objects that are approximately aligned, represented as a single approximated line.
     
+    The approximation is based on the median slope/intercept (for non-vertical lines) 
+    or median x-value (for vertical lines).
+    """
+
+
+    def __init__(self, lines: list[Line] = None) -> None:
+        self.lines = lines or []
+
+        if not self.lines:
+            self.slope = self.intercept = self.xv = None
+        else:
+            self._calculate_line_approximation()
+
+
+    def __repr__(self) -> str:
+        """Return a string representation of the lines in the group."""
+        return f'{self.lines}'
+    
+
+    def process_line(self, line: Line, thresh_theta: float | int, thresh_intercept: float | int) -> bool:
+        """
+        Try to add a Line to the group if it is similar enough to the reference line.
+        
+        Args:
+            line (Line): The line to evaluate and possibly add.
+            thresh_theta (float | int): Angular threshold for similarity in orientation.
+            thresh_intercept (float | int): Threshold for similarity in intercept (used for non-vertical lines).
+        
+        Returns:
+            bool: True if the line was added to the group, False otherwise.
+        """
+        ref = self.lines[0]
+        found = False
+
+        if abs(ref.theta - line.theta) < thresh_theta:
+            
+            if ref.xv is None and line.xv is None:
+                if abs(ref.intercept - line.intercept) < thresh_intercept:
+                    found = True
+        
+            if ref.xv is not None or line.xv is not None:
+                found = True
+            
+            if found:
+                self.lines.append(line)
+                self._calculate_line_approximation()
+
+        return found
+    
+
+    def _calculate_line_approximation(self) -> None:
+        """
+        Calculate the approximated line for the group based on the median of included lines.
+        
+        - For vertical lines (with xv), median x is used.
+        - For non-vertical lines, median slope and intercept are used.
+        """
+        vertical_lines = [line.xv for line in self.lines if line.xv is not None]
+
+        if vertical_lines:
+            self.xv = np.median(vertical_lines)
+            self.slope, self.intercept = None, None
+
+        else:
+            self.xv = None
+            self.slope = np.median([line.slope for line in self.lines])
+            self.intercept = np.median([line.intercept for line in self.lines])
 
