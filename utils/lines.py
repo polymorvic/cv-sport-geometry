@@ -90,8 +90,39 @@ class Line:
         return copy.deepcopy(self)
     
 
-    def intersection(self, another_line: Line, image: np.ndarray):
-        raise NotImplementedError
+    def intersection(self, another_line: Line, image: np.ndarray) -> Intersection | None:
+        """
+        Compute the intersection point between this line and another line, 
+        and return it as an `Intersection` object if it lies within image bounds.
+
+        Args:
+            another_line (Line): The other line to intersect with.
+            image (np.ndarray): The image used to check if the intersection point lies within its bounds.
+
+        Returns:
+            Intersection | None: The intersection object if the lines intersect within the image bounds,
+            otherwise None.
+        """
+        if (self.slope is not None and another_line.slope is not None and self.slope == another_line.slope) or (self.xv is not None and another_line.xv is not None):
+            return None
+        
+        elif self.xv is not None and another_line.xv is None:
+            x = self.xv
+            y = another_line.slope * x + another_line.intercept
+
+        elif self.xv is None and another_line.xv is not None:
+            x = another_line.xv
+            y = self.slope * x + self.intercept
+
+        else:
+            x = (another_line.intercept - self.intercept) / (self.slope - another_line.slope)
+            y = self.slope * x + self.intercept
+
+        height, width = image.shape[:2]
+        if 0 <= x < width and 0 <= y < height:
+            return Intersection(self, another_line, (int(x), int(y)))
+        else:
+            return None
     
 
     def transform_to_another_coordinate_system(self, source_img: np.ndarray, dst_image: np.ndarray, offset: int) -> Line:
@@ -400,3 +431,59 @@ class LineGroup(Line):
             self.slope = np.median([line.slope for line in self.lines])
             self.intercept = np.median([line.intercept for line in self.lines])
 
+
+class Intersection:
+    """
+    Represents the intersection point of two lines and the angle between them.
+    """
+
+
+    def __init__(self, line1: Line, line2: Line, intersection_point: tuple[int, int]) -> None:
+        """
+        Initialize the Intersection object.
+
+        Args:
+            line1 (Line): The first line.
+            line2 (Line): The second line.
+            intersection_point (tuple[int, int]): The (x, y) coordinates of the intersection point.
+        """
+        self.line1 = line1
+        self.line2 = line2
+        self.point = intersection_point
+
+        # computing angle between the lines
+        if line1.xv is None and line2.xv is not None:
+            angle = 90 - line1.theta
+        elif line1.xv is not None and line2.xv is None:
+            angle = 90 - line2.theta
+        elif line1.slope * line2.slope == -1:
+            angle = 90
+        else:
+            angle = np.rad2deg(np.arctan((line2.slope - line1.slope) / (1 + line1.slope * line2.slope)))
+
+        # angle adjustment
+        self.angle = angle + 180
+
+
+    def __repr__(self):
+        """
+        Return a string representation of the intersection point.
+
+        Returns:
+            str: The intersection point as a string.
+        """
+        return f'{self.point}'
+    
+    
+    def distance(self, another_intersection: Intersection) -> float:
+        """
+        Calculate the Euclidean distance to another intersection point.
+
+        Args:
+            another_intersection (Intersection): Another intersection to compute distance to.
+
+        Returns:
+            float: The Euclidean distance.
+        """
+        return np.linalg.norm(np.array(self.point) - np.array(another_intersection.point))
+    
