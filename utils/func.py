@@ -3,7 +3,8 @@ import cv2
 import random
 import colorsys
 import numpy as np
-from utils.lines import Line, LineGroup
+from utils.lines import Line, LineGroup, Point
+from utils.const import ARRAY_X_INDEX, ARRAY_Y_INDEX
 
 def get_pictures(path: str) -> dict[str, list[np.ndarray]]:
     """
@@ -165,3 +166,70 @@ def generate_similar_color_pairs(n: int = 10) -> list[tuple[tuple[int, int, int]
         color_pairs.append((bgr1, bgr2))
 
     return color_pairs
+
+
+def find_point_neighbourhood(point: Point, offset: int, img: np.ndarray, line: Line) -> tuple[np.ndarray, int, int]:
+    """
+    Extract a rectangular neighborhood around a given point, constrained by a line and image boundaries.
+    If the height from the line's range is smaller than `offset`, it is expanded to meet the minimum height.
+    The height based on the line is always used as priority when it is greater than or equal to `offset`.
+
+    Args:
+        point (Point):
+            The central point from which the neighborhood is calculated.
+        offset (int):
+            Horizontal distance in pixels from the point in the x-direction,
+            and the minimum allowed height of the neighborhood.
+        img (np.ndarray):
+            The source image array.
+        line (Line):
+            A line used to determine the vertical range from the horizontal limits.
+
+    Returns:
+        tuple[np.ndarray, int, int]:
+            A tuple containing:
+                - The extracted sub-image as a numpy array.
+                - The x-coordinate of the top-left corner of the extracted region, value x of global origin.
+                - The y-coordinate of the top-left corner of the extracted region, value y of global origin.
+    """
+    height, width = img.shape[ARRAY_Y_INDEX], img.shape[ARRAY_X_INDEX]
+
+    def clamp_window_around(center: int, win_size: int, limit: int) -> tuple[int, int]:
+        """Return (start, end) for a window of `win_size` centered at `center`, clipped to [0, limit-1]."""
+        win_size = min(win_size, limit)
+        half = win_size // 2
+        start = int(center) - half
+        end = start + win_size - 1
+
+        if start < 0:
+            end -= start
+            start = 0
+        if end >= limit:
+            start -= (end - (limit - 1))
+            end = limit - 1
+            if start < 0:
+                start = 0
+        return start, end
+
+    x_start = max(int(point.x) - offset, 0)
+    x_end = min(int(point.x) + offset, width - 1)
+    if x_start > x_end:
+        x_start, x_end = x_end, x_start
+
+    if line.slope is None or line.intercept is None:
+        y_start = max(int(point.y) - offset, 0)
+        y_end = min(int(point.y) + offset, height - 1)
+    else:
+        y0 = max(min(line.y_for_x(x_start), height - 1), 0)
+        y1 = max(min(line.y_for_x(x_end), height - 1), 0)
+        y_start, y_end = min(y0, y1), max(y0, y1)
+
+        curr_h = y_end - y_start + 1
+        if curr_h < offset:
+            y_start, y_end = clamp_window_around(int(point.y), offset, height)
+
+    if y_start > y_end:
+        y_start, y_end = y_end, y_start
+
+    return img[y_start:y_end+1, x_start:x_end+1], x_start, y_start
+
