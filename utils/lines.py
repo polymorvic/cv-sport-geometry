@@ -3,6 +3,94 @@ import copy
 import numpy as np
 
 
+class Point[T: (int, float)](tuple[T, T]):
+    """
+    Immutable 2D point represented as a generic tuple of two numbers.
+
+    This class is a generic wrapper around a fixed-length `tuple` with exactly
+    two elements: the X and Y coordinates. It is generic in `T`, where `T`
+    must be either `int` or `float`.
+
+    Since `tuple` is immutable, this class uses `__new__` (not `__init__`)
+    to construct instances from `x` and `y` values. Once created, a `Point`
+    instance cannot be modified.
+
+    Type Parameters:
+        T (int | float): The coordinate type.
+    """
+    __slots__ = ()
+
+    def __new__(cls, x: T, y: T):
+        """
+        Create a new Point instance from X and Y coordinates.
+
+        Args:
+            x (T): The X coordinate (int or float).
+            y (T): The Y coordinate (int or float).
+
+        Returns:
+            Point[T]: A new immutable Point instance.
+        """
+        return super().__new__(cls, (x, y))
+
+    @classmethod
+    def from_xy(cls, x: T, y: T) -> Point[T]:
+        """
+        Create a Point from separate X and Y values.
+
+        Args:
+            x (T): The X coordinate (int or float).
+            y (T): The Y coordinate (int or float).
+
+        Returns:
+            Point[T]: A new immutable Point instance.
+        """
+        return cls(x, y)
+    
+    @classmethod
+    def from_iterable(cls, iterable: tuple[T, T] | list[T]) -> Point[T]:
+        """
+        Create a Point from an iterable of exactly two elements.
+
+        The iterable must contain exactly two values representing the X and Y
+        coordinates, respectively.
+
+        Args:
+            iterable (tuple[T, T] | list[T]):
+                An iterable containing exactly two numeric elements.
+
+        Returns:
+            Point[T]: A new immutable Point instance.
+
+        Raises:
+            ValueError: If the iterable does not contain exactly two elements.
+        """
+        values = tuple(iterable)
+        if len(values) != 2:
+            raise ValueError(f"Expected iterable of length 2, got {len(values)}")
+        return cls(values[0], values[1])
+
+    @property
+    def x(self) -> T:
+        """
+        Get the X coordinate of the point.
+
+        Returns:
+            T: The X coordinate (int or float).
+        """
+        return self[0]
+
+    @property
+    def y(self) -> T:
+        """
+        Get the Y coordinate of the point.
+
+        Returns:
+            T: The Y coordinate (int or float).
+        """
+        return self[1]
+
+    
 class Line:
     """
     Represents a 2D line in either slope-intercept form (y = ax + b) or vertical line form (xv = constant).
@@ -120,7 +208,7 @@ class Line:
 
         height, width = image.shape[:2]
         if 0 <= x < width and 0 <= y < height:
-            return Intersection(self, another_line, (int(x), int(y)))
+            return Intersection(self, another_line, Point(int(x), int(y)))
         else:
             return None
     
@@ -438,7 +526,7 @@ class Intersection:
     """
 
 
-    def __init__(self, line1: Line, line2: Line, intersection_point: tuple[int, int]) -> None:
+    def __init__(self, line1: Line, line2: Line, intersection_point: Point) -> None:
         """
         Initialize the Intersection object.
 
