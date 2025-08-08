@@ -261,7 +261,7 @@ class Line:
         return int((y - self.intercept) / self.slope)
     
 
-    def get_points_by_distance(self, main_point: tuple[int, int], distance: float) -> tuple[int, int]:
+    def get_points_by_distance(self, main_point: Point, distance: float) -> tuple[Point, Point]:
         """
         Finds two points on the line that are at a given Euclidean distance from a specified point.
 
@@ -280,7 +280,7 @@ class Line:
 
         # Vertical line: return two points offset by ±distance along the y-axis
         if self.xv is not None:
-            return (int(main_x), int(main_y - distance)), (int(main_x), int(main_y + distance))
+            return Point(int(main_x), int(main_y - distance)), Point(int(main_x), int(main_y + distance))
 
         if self.slope is None or self.intercept is None:
             raise ValueError("Cannot compute points: line is not properly defined.")
@@ -301,17 +301,17 @@ class Line:
 
         sqrt_delta = np.sqrt(discriminant)
 
-        x1 = (-B + sqrt_delta) / (2 * A)
-        x2 = (-B - sqrt_delta) / (2 * A)
+        x1 = int((-B + sqrt_delta) / (2 * A))
+        x2 = int((-B - sqrt_delta) / (2 * A))
 
         # Get corresponding y values using the line equation
-        y1 = self.y_for_x(x1)
-        y2 = self.y_for_x(x2)
+        y1 = int(self.y_for_x(x1))
+        y2 = int(self.y_for_x(x2))
 
-        return (int(x1), int(y1)), (int(x2), int(y2))
+        return Point(x1, y1), Point(x2, y2)
         
     
-    def limit_to_img(self, img: np.ndarray) -> tuple[tuple[int, int], tuple[int, int]]:
+    def limit_to_img(self, img: np.ndarray) -> tuple[Point, Point]:
         """
         Returns two endpoints of the line segment clipped to the image boundaries.
 
@@ -326,29 +326,29 @@ class Line:
 
         if self.xv is not None:
             x = int(self.xv)
-            return (x, 0), (x, img_height)
+            return Point(x, 0), Point(x, img_height)
 
         if self.slope == 0:
             y = int(self.intercept)
-            return (0, y), (img_width, y)
+            return Point(0, y), Point(img_width, y)
 
         points = []
 
         x_top = self.x_for_y(0)
         if x_top is not None and 0 <= x_top <= img_width:
-            points.append((int(x_top), 0))
+            points.append(Point(int(x_top), 0))
 
         x_bottom = self.x_for_y(img_height)
         if x_bottom is not None and 0 <= x_bottom <= img_width:
-            points.append((int(x_bottom), img_height))
+            points.append(Point(int(x_bottom), img_height))
 
         y_left = self.y_for_x(0)
         if y_left is not None and 0 <= y_left <= img_height:
-            points.append((0, int(y_left)))
+            points.append(Point(0, int(y_left)))
 
         y_right = self.y_for_x(img_width)
         if y_right is not None and 0 <= y_right <= img_height:
-            points.append((img_width, int(y_right)))
+            points.append(Point(img_width, int(y_right)))
 
         unique_points = list(dict.fromkeys(points))  # removes duplicates while preserving order
 
