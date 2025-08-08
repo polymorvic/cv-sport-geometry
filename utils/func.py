@@ -3,7 +3,8 @@ import cv2
 import random
 import colorsys
 import numpy as np
-from utils.lines import Line, LineGroup, Point
+from typing import Literal
+from utils.lines import Line, LineGroup, Point, Intersection
 from utils.const import ARRAY_X_INDEX, ARRAY_Y_INDEX
 
 def get_pictures(path: str) -> dict[str, list[np.ndarray]]:
@@ -233,3 +234,173 @@ def find_point_neighbourhood(point: Point, offset: int, img: np.ndarray, line: L
 
     return img[y_start:y_end+1, x_start:x_end+1], x_start, y_start
 
+
+def _clamp_to_img(p: Point, img: np.ndarray, line: Line) -> Point:
+    """
+    Clamp a point's coordinates so that it lies within the image boundaries.
+
+    If the point is outside the image in either the x or y direction, it is 
+    projected back onto the image border along the given line. This ensures 
+    that all returned points are valid pixel positions.
+
+    Parameters:
+        p : Point
+            The point to be clamped.
+        img : np.ndarray
+            The image array used to determine boundaries.
+        line : Line
+            The line object, used to compute the corresponding coordinate 
+            (x for a given y or y for a given x) when projecting onto the border.
+
+    Returns:
+        Point
+            A new point lying within the image bounds.
+    """
+    if p.y >= img.shape[ARRAY_Y_INDEX]:
+        y = img.shape[ARRAY_Y_INDEX] - 1
+        return Point(line.x_for_y(y), y)
+    if p.y < 0:
+        y = 0
+        return Point(line.x_for_y(y), y)
+    if p.x < 0:
+        x = 0
+        return Point(x, line.y_for_x(x))
+    if p.x >= img.shape[ARRAY_X_INDEX]:
+        x = img.shape[ARRAY_X_INDEX] - 1
+        return Point(x, line.y_for_x(x))
+    return p
+
+def _unit_tangent(line: Line) -> tuple[float, float]:
+    """
+    Compute the unit tangent vector of a line.
+
+    The tangent vector is derived from the line slope (`line.slope`) or, 
+    in the case of a vertical line, is set to point straight up. The vector 
+    is normalized to have length 1.
+
+    Parameters:
+        line : Line
+            The line object for which the tangent vector will be computed.
+            Must provide a `slope` attribute.
+
+    Returns:
+        (float, float)
+            The normalized (dx, dy) tangent vector.
+    """
+    m = getattr(line, "slope", None)
+    if m is None or np.isinf(m):  
+        dx, dy = 0.0, 1.0
+    else:
+        dx, dy = 1.0, m     
+    norm = (dx*dx + dy*dy) ** 0.5
+    if norm == 0:
+        return (0.0, -1.0) 
+    return (dx / norm, dy / norm)
+
+
+def traverse_line(point: Point, offset: int, img: np.ndarray, line: Line, direction: Literal["up", "down"] = "up") -> tuple[Point, np.ndarray, list[int, int]]:
+    """
+    Traverse along a given line from a starting point by a fixed offset, 
+    returning the next point in the specified direction, the extracted 
+    image neighborhood, and the global origin coordinates.
+
+    This function:
+        1. Finds candidate points along the line at the given offset from `point`.
+        2. Clamps each candidate to the image boundaries (to avoid coordinates outside the image).
+        3. Determines the unit tangent vector of the line.
+        4. Adjusts the tangent's orientation based on the desired traversal direction
+        ("up" for decreasing y on the image, "down" for increasing y).
+        5. Selects the candidate point that best matches the desired movement direction
+        using the dot product with the tangent vector.
+
+    Parameters:
+        point : Point
+            The current point on the line from which traversal starts.
+        offset : int
+            The distance in pixels along the line to search for candidate points.
+        img : np.ndarray
+            The image array. Used to clamp points to valid pixel coordinates.
+        line : Line
+            The line object along which traversal occurs. Must provide slope, 
+            `x_for_y()` and `y_for_x()` methods, and `get_points_by_distance()`.
+        direction : {"up", "down"}, default="up"
+            The desired traversal direction:
+            - "up": move toward smaller y-values (visually up in the image)
+            - "down": move toward larger y-values (visually down in the image)
+
+    Returns:
+        new_point : Point
+            The chosen point in the desired direction, clamped to image boundaries.
+        img_piece : np.ndarray
+            The extracted neighborhood of the original image around the starting point.
+        global_origin : list[int, int]
+            The [y, x] global origin coordinates of the extracted image piece.
+
+    Notes:
+        - This function automatically determines whether to prioritize x or y 
+        when choosing the next point, based on the line slope and direction.
+        - No manual axis or index selection is required.
+    """
+    img_piece, *global_origin = find_point_neighbourhood(point, offset, img, line)
+
+    points_candidates = line.get_points_by_distance(point, offset)
+    points = [_clamp_to_img(p, img, line) for p in points_candidates]
+
+    tx, ty = _unit_tangent(line)
+
+    if direction == "up" and ty > 0:
+        tx, ty = -tx, -ty
+    elif direction == "down" and ty < 0:
+        tx, ty = -tx, -ty
+
+    def score(p: Point) -> float:
+        vx, vy = (p.x - point.x), (p.y - point.y)
+        return vx * tx + vy * ty
+
+    new_point = max(points, key=score)
+    return new_point, img_piece, global_origin
+
+
+def find_net_lines(img_piece: np.ndarray) -> list[LineGroup]:
+    piece_gray = cv2.cvtColor(img_piece, cv2.COLOR_RGB2GRAY)
+    neg_img = 255 - piece_gray
+    neg_bin_img = (neg_img > neg_img.max() * 0.8).astype(np.uint8)
+    
+    lines = cv2.HoughLinesP(neg_bin_img, 1, np.pi/180, threshold=15, minLineLength=5, maxLineGap=5)
+    if lines is None:
+        lines = []
+            
+    img_copy = img_piece.copy()
+    for line in lines:
+        x1, y1, x2, y2 = line[0]
+        cv2.line(img_copy, (x1, y1), (x2, y2), (0, 255, 0), 2)
+
+    line_obj = [Line.from_hough_line(line[0]) for line in lines]
+    line_obj = [line for line in line_obj if line.slope is not None] 
+    return group_lines(line_obj, 5, 10)
+
+
+def check_items_sign(line_groups: list[LineGroup]) -> bool:
+    return all(item.slope >= 0 for item in line_groups) or all(item.slope < 0 for item in line_groups)
+
+
+def transform_point(p_local: Intersection | Point, original_x_start: int, original_y_start: int) -> Point:
+    if isinstance(p_local, Intersection):
+        p_local = p_local.point
+    g_point_x = p_local.x + original_x_start
+    g_point_y = p_local.y + original_y_start
+    return Point(g_point_x, g_point_y)
+
+
+def transform_intersection(intersection: Intersection, original_x_start: int, original_y_start: int, local_img: np.ndarray) -> Intersection:
+    global_point = transform_point(intersection, original_x_start, original_y_start)
+
+    def transform_line(line: Line) -> Line:
+        line_local_points = line.limit_to_img(local_img)
+        line_global_points = [transform_point(point, original_x_start, original_y_start) for point in line_local_points]
+        return Line.from_points(*line_global_points)
+
+    global_line1 = transform_line(intersection.line1)
+    global_line2 = transform_line(intersection.line2)
+
+    return Intersection(global_line1, global_line2, global_point)
