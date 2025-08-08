@@ -165,7 +165,7 @@ class Line:
         Returns:
             str: String representation of the line.
         """
-        return f'y = {self.slope} * x + {self.slope}'
+        return f'y = {self.slope} * x + {self.intercept}'
     
 
     def copy(self):
