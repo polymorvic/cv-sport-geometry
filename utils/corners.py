@@ -1,7 +1,10 @@
 import numpy as np
 from collections import defaultdict
 from .lines import Line, Intersection, Point
-from .func import traverse_line, find_net_lines, check_items_sign, transform_intersection
+from .func import traverse_line, find_net_lines, check_items_sign, transform_intersection, transform_line
+
+import matplotlib.pyplot as plt
+import cv2
 
 class CourtFinder:
     """
@@ -114,22 +117,32 @@ class CourtFinder:
             net_line_groups = find_net_lines(img_piece)
 
             intersections = []
-            local_line = line.copy()
-            local_line.intercept = 0
+            local_line = transform_line(line, self.img, *original_range, False)
 
-            # rec = draw_rectangle(self.img, *original_range, self.offset)
+            print(local_line.slope, local_line.intercept)
+            print(line.slope, line.intercept)
 
             if check_items_sign(net_line_groups):
 
                 for net_line in net_line_groups:
                     intersection = local_line.intersection(net_line, img_piece)
-  
-                    if intersection is not None:
-                        intersections.append(intersection)
+
+                    # print(local_line, net_line)
+
+                    # img_copy = img_piece.copy()
+                    # pts1 = local_line.limit_to_img(img_copy)
+                    # pts2 = net_line.limit_to_img(img_copy)
+                    # cv2.line(img_copy, *pts1, (0, 0, 255))
+                    # cv2.line(img_copy, *pts2, (0, 255, 255))
+                    # plt.imshow(img_copy)
+                    # plt.show()
+
+                if intersection is not None:
+                    intersections.append(intersection)
 
             if len(intersections) > 0:
                 net_intersection = sorted(intersections, key = lambda intersection: intersection.point.y)[-1]
-                intersection_global = transform_intersection(net_intersection, *original_range, img_piece)
+                intersection_global = transform_intersection(net_intersection, self.img, *original_range)
 
 
         return intersection_global

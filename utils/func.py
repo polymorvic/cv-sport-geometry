@@ -3,9 +3,11 @@ import cv2
 import random
 import colorsys
 import numpy as np
-from typing import Literal
+from typing import Literal, Iterable
 from utils.lines import Line, LineGroup, Point, Intersection
 from utils.const import ARRAY_X_INDEX, ARRAY_Y_INDEX
+
+import matplotlib.pyplot as plt
 
 def get_pictures(path: str) -> dict[str, list[np.ndarray]]:
     """
@@ -270,6 +272,7 @@ def _clamp_to_img(p: Point, img: np.ndarray, line: Line) -> Point:
         return Point(x, line.y_for_x(x))
     return p
 
+
 def _unit_tangent(line: Line) -> tuple[float, float]:
     """
     Compute the unit tangent vector of a line.
@@ -361,12 +364,15 @@ def traverse_line(point: Point, offset: int, img: np.ndarray, line: Line, direct
     return new_point, img_piece, global_origin
 
 
-def find_net_lines(img_piece: np.ndarray) -> list[LineGroup]:
+def find_net_lines(img_piece: np.ndarray, bin_thresh: float = 0.8, hough_line_thresh: int = 15, min_line_len: int | None = None , min_line_gap: int = 5) -> list[LineGroup]:
     piece_gray = cv2.cvtColor(img_piece, cv2.COLOR_RGB2GRAY)
     neg_img = 255 - piece_gray
-    neg_bin_img = (neg_img > neg_img.max() * 0.8).astype(np.uint8)
-    
-    lines = cv2.HoughLinesP(neg_bin_img, 1, np.pi/180, threshold=15, minLineLength=5, maxLineGap=5)
+    neg_bin_img = (neg_img > neg_img.max() * bin_thresh).astype(np.uint8)
+
+    # plt.imshow(neg_bin_img)
+    # plt.show()
+
+    lines = cv2.HoughLinesP(neg_bin_img, 1, np.pi/180, threshold=hough_line_thresh, minLineLength=min_line_len, maxLineGap=min_line_gap)
     if lines is None:
         lines = []
             
@@ -374,6 +380,9 @@ def find_net_lines(img_piece: np.ndarray) -> list[LineGroup]:
     for line in lines:
         x1, y1, x2, y2 = line[0]
         cv2.line(img_copy, (x1, y1), (x2, y2), (0, 255, 0), 2)
+
+    # plt.imshow(img_copy)
+    # plt.show()  
 
     line_obj = [Line.from_hough_line(line[0]) for line in lines]
     line_obj = [line for line in line_obj if line.slope is not None] 
@@ -384,23 +393,38 @@ def check_items_sign(line_groups: list[LineGroup]) -> bool:
     return all(item.slope >= 0 for item in line_groups) or all(item.slope < 0 for item in line_groups)
 
 
-def transform_point(p_local: Intersection | Point, original_x_start: int, original_y_start: int) -> Point:
-    if isinstance(p_local, Intersection):
-        p_local = p_local.point
-    g_point_x = p_local.x + original_x_start
-    g_point_y = p_local.y + original_y_start
-    return Point(g_point_x, g_point_y)
+
+def transform_point(point: Intersection | Point, original_x_start: int, original_y_start: int, to_global: bool = True) -> Point:
+    if isinstance(point, Intersection):
+        point = point.point
+
+    if to_global:
+        return Point(point.x + original_x_start, point.y + original_y_start)
+    else:
+        return Point(point.x - original_x_start, point.y - original_y_start)
 
 
-def transform_intersection(intersection: Intersection, original_x_start: int, original_y_start: int, local_img: np.ndarray) -> Intersection:
-    global_point = transform_point(intersection, original_x_start, original_y_start)
+def transform_line(original_line: Line, original_img: np.ndarray, original_x_start: int, original_y_start: int, to_global: bool = True) -> Line:
+    pts_source: Iterable[Point] = original_line.limit_to_img(original_img)
+    pts_transformed = [transform_point(p, original_x_start, original_y_start, to_global=to_global) for p in pts_source]
+    return Line.from_points(*pts_transformed)
 
-    def transform_line(line: Line) -> Line:
-        line_local_points = line.limit_to_img(local_img)
-        line_global_points = [transform_point(point, original_x_start, original_y_start) for point in line_local_points]
-        return Line.from_points(*line_global_points)
 
-    global_line1 = transform_line(intersection.line1)
-    global_line2 = transform_line(intersection.line2)
+def transform_intersection(intersection: Intersection, source_img: np.ndarray, original_x_start: int, original_y_start: int, to_global: bool = True) -> Intersection:
+    """
+    Transforms an Intersection in one go.
+    - If to_global=True: treats inputs as LOCAL and returns GLOBAL.
+    - If to_global=False: treats inputs as GLOBAL and returns LOCAL.
 
-    return Intersection(global_line1, global_line2, global_point)
+    Note: 
+        `source_img` should be the image in the *source* space,
+        i.e. the space you are transforming FROM. This keeps `limit_to_img`
+        correct in both directions.
+    """
+    transformed_point = transform_point(intersection.point, original_x_start, original_y_start, to_global=to_global)
+
+    line1_t = transform_line(intersection.line1, source_img, original_x_start, original_y_start, to_global)
+    line2_t = transform_line(intersection.line2, source_img, original_x_start, original_y_start, to_global)
+
+    return Intersection(line1_t, line2_t, transformed_point)
+
