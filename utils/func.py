@@ -24,7 +24,7 @@ def get_pictures(path: str) -> dict[str, list[np.ndarray]]:
             'gray': list of images in grayscale format
         }       
     """
-    valid_extensions = {'.jpg', '.jpeg', '.png',}
+    valid_extensions = {'.jpg', '.jpeg', '.png', '.webp'}
     filenames = [f for f in os.listdir(path) if os.path.isfile(os.path.join(path, f)) and os.path.splitext(f)[1].lower() in valid_extensions]
 
     pics = {
@@ -89,7 +89,7 @@ def apply_hough_transformation(img_rgb: np.ndarray, blur_kernel_size: int = 5, c
     return img_copy, lines
 
 
-def group_lines(lines: list[Line], thresh_theta: float, thresh_intercept: float) -> list[LineGroup]:
+def group_lines(lines: list[Line], thresh_theta: float | int = 5, thresh_intercept: float | int = 10) -> list[LineGroup]:
     """
     Group similar Line objects into LineGroups based on orientation and position thresholds.
 
@@ -364,7 +364,7 @@ def traverse_line(point: Point, offset: int, img: np.ndarray, line: Line, direct
     return new_point, img_piece, global_origin
 
 
-def find_net_lines(img_piece: np.ndarray, bin_thresh: float = 0.8, hough_line_thresh: int = 15, min_line_len: int | None = None , min_line_gap: int = 5) -> list[LineGroup]:
+def find_net_lines(img_piece: np.ndarray, bin_thresh: float = 0.8, hough_line_thresh: int = 15, min_line_len: int | None = 5 , min_line_gap: int = 5) -> list[LineGroup]:
     piece_gray = cv2.cvtColor(img_piece, cv2.COLOR_RGB2GRAY)
     neg_img = 255 - piece_gray
     neg_bin_img = (neg_img > neg_img.max() * bin_thresh).astype(np.uint8)
@@ -386,7 +386,7 @@ def find_net_lines(img_piece: np.ndarray, bin_thresh: float = 0.8, hough_line_th
 
     line_obj = [Line.from_hough_line(line[0]) for line in lines]
     line_obj = [line for line in line_obj if line.slope is not None] 
-    return group_lines(line_obj, 5, 10)
+    return group_lines(line_obj)
 
 
 def check_items_sign(line_groups: list[LineGroup]) -> bool:
