@@ -114,31 +114,39 @@ class CourtFinder:
             else:
                 point = new_point
 
-            net_line_groups = find_net_lines(img_piece)
+            net_line_groups = find_net_lines(img_piece, bin_thresh=0.9)
 
             intersections = []
             local_line = transform_line(line, self.img, *original_range, False)
 
-            print(local_line.slope, local_line.intercept)
-            print(line.slope, line.intercept)
+            # print(net_line_groups)
+
+            # print(local_line.slope, local_line.intercept)
+            # print(line.slope, line.intercept)
+
+            # plt.imshow(img_piece)
+            # plt.show()
 
             if check_items_sign(net_line_groups):
 
                 for net_line in net_line_groups:
+                    # print(net_line)
                     intersection = local_line.intersection(net_line, img_piece)
 
-                    # print(local_line, net_line)
+                    # print('intersection: ', intersection)
 
-                    # img_copy = img_piece.copy()
-                    # pts1 = local_line.limit_to_img(img_copy)
-                    # pts2 = net_line.limit_to_img(img_copy)
-                    # cv2.line(img_copy, *pts1, (0, 0, 255))
-                    # cv2.line(img_copy, *pts2, (0, 255, 255))
-                    # plt.imshow(img_copy)
-                    # plt.show()
+                    img_copy = img_piece.copy()
+                    pts1 = local_line.limit_to_img(img_copy)
+                    pts2 = net_line.limit_to_img(img_copy)
+                    cv2.line(img_copy, *pts1, (0, 0, 255))
+                    cv2.line(img_copy, *pts2, (0, 255, 255))
+                    plt.imshow(img_copy)
+                    plt.show()
 
-                if intersection is not None:
-                    intersections.append(intersection)
+                    # print(net_line, local_line)
+
+                    if intersection is not None and np.sign(net_line.slope) != np.sign(local_line.slope) and net_line.slope != 0: ### SPRAWDZENIE - dodanie nowego warunku tutaj
+                        intersections.append(intersection)
 
             if len(intersections) > 0:
                 net_intersection = sorted(intersections, key = lambda intersection: intersection.point.y)[-1]

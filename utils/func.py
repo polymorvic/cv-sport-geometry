@@ -137,7 +137,6 @@ def draw_line_group(img: np.ndarray, line_group: LineGroup, color: tuple[int, in
 
     p1, p2 = line_group.limit_to_img(img_copy)
     cv2.line(img_copy, p1, p2, approx_color, thickness=2)
-
     return img_copy
 
 
@@ -369,8 +368,11 @@ def find_net_lines(img_piece: np.ndarray, bin_thresh: float = 0.8, hough_line_th
     neg_img = 255 - piece_gray
     neg_bin_img = (neg_img > neg_img.max() * bin_thresh).astype(np.uint8)
 
-    # plt.imshow(neg_bin_img)
-    # plt.show()
+    plt.imshow(img_piece)
+    plt.show()
+
+    plt.imshow(neg_bin_img)
+    plt.show()
 
     lines = cv2.HoughLinesP(neg_bin_img, 1, np.pi/180, threshold=hough_line_thresh, minLineLength=min_line_len, maxLineGap=min_line_gap)
     if lines is None:
@@ -381,8 +383,8 @@ def find_net_lines(img_piece: np.ndarray, bin_thresh: float = 0.8, hough_line_th
         x1, y1, x2, y2 = line[0]
         cv2.line(img_copy, (x1, y1), (x2, y2), (0, 255, 0), 2)
 
-    # plt.imshow(img_copy)
-    # plt.show()  
+    plt.imshow(img_copy)
+    plt.show()  
 
     line_obj = [Line.from_hough_line(line[0]) for line in lines]
     line_obj = [line for line in line_obj if line.slope is not None] 
@@ -425,6 +427,5 @@ def transform_intersection(intersection: Intersection, source_img: np.ndarray, o
 
     line1_t = transform_line(intersection.line1, source_img, original_x_start, original_y_start, to_global)
     line2_t = transform_line(intersection.line2, source_img, original_x_start, original_y_start, to_global)
-
     return Intersection(line1_t, line2_t, transformed_point)
 
