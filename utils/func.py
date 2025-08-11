@@ -3,7 +3,7 @@ import cv2
 import random
 import colorsys
 import numpy as np
-from typing import Literal, Iterable
+from typing import Literal, Iterable, Optional
 from utils.lines import Line, LineGroup, Point, Intersection
 from utils.const import ARRAY_X_INDEX, ARRAY_Y_INDEX
 
@@ -368,11 +368,11 @@ def find_net_lines(img_piece: np.ndarray, bin_thresh: float = 0.8, hough_line_th
     neg_img = 255 - piece_gray
     neg_bin_img = (neg_img > neg_img.max() * bin_thresh).astype(np.uint8)
 
-    plt.imshow(img_piece)
-    plt.show()
+    # plt.imshow(img_piece)
+    # plt.show()
 
-    plt.imshow(neg_bin_img)
-    plt.show()
+    # plt.imshow(neg_bin_img)
+    # plt.show()
 
     lines = cv2.HoughLinesP(neg_bin_img, 1, np.pi/180, threshold=hough_line_thresh, minLineLength=min_line_len, maxLineGap=min_line_gap)
     if lines is None:
@@ -383,8 +383,8 @@ def find_net_lines(img_piece: np.ndarray, bin_thresh: float = 0.8, hough_line_th
         x1, y1, x2, y2 = line[0]
         cv2.line(img_copy, (x1, y1), (x2, y2), (0, 255, 0), 2)
 
-    plt.imshow(img_copy)
-    plt.show()  
+    # plt.imshow(img_copy)
+    # plt.show()  
 
     line_obj = [Line.from_hough_line(line[0]) for line in lines]
     line_obj = [line for line in line_obj if line.slope is not None] 
@@ -429,3 +429,103 @@ def transform_intersection(intersection: Intersection, source_img: np.ndarray, o
     line2_t = transform_line(intersection.line2, source_img, original_x_start, original_y_start, to_global)
     return Intersection(line1_t, line2_t, transformed_point)
 
+def _get_percentage_of_ones(arr: np.ndarray) -> float:
+    return np.count_nonzero(arr == 1) / arr.size
+
+
+def is_court_corner(img: np.ndarray, bin_thresh: float = 0.8, 
+                    thresh_of_ones_lower: float = 0.05, 
+                    thresh_of_ones_upper: float = 0.9,
+                    min_points: int = 2) -> bool:
+
+    gray = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
+    bin_img = (gray > gray.max() * bin_thresh).astype(np.uint8)
+
+    # plt.imshow(img)
+    # plt.show()
+
+    # plt.imshow(gray)
+    # plt.show()
+
+    # plt.imshow(bin_img)
+    # plt.show()
+
+    ones_ratio = _get_percentage_of_ones(bin_img)
+    # print('ones ratio', ones_ratio)
+    if not thresh_of_ones_lower < ones_ratio < thresh_of_ones_upper:
+        # print('one ratio')
+        return False
+
+    white_locations = np.argwhere(bin_img > 0)
+
+    row_start = white_locations[:, 0].min()
+    row_stop = white_locations[:, 0].max() + 1
+    points1 = []
+
+    max_len = len(np.argwhere(bin_img[row_start, :]).flatten())
+
+    for i, row in enumerate(range(row_start, row_stop)):
+        ones = np.argwhere(bin_img[row, :]).flatten()
+        y = int(np.median(ones))
+
+        if i > 0:
+            if not max_len - 1 < len(ones) < max_len + 1:
+                continue
+                
+                
+        points1.append((row, y))
+
+    points1 = sorted(points1, key = lambda x: x[0])
+
+    if len(points1) < min_points:
+        # print('min points 1')
+        return False
+        
+    line1 = Line.from_points(points1[0][::-1], points1[-1][::-1])
+
+
+    col_start = white_locations[:, 1].min()
+    col_stop = white_locations[:, 1].max() + 1
+    points = []
+
+    max_len = len(np.argwhere(bin_img[:, col_start]).flatten())
+
+    for i, col in enumerate(range(col_start, col_stop)):
+        ones = np.argwhere(bin_img[:, col]).flatten()
+        x = int(np.median(ones))
+
+        if i > 0:
+        
+            if not max_len - 1 < len(ones) < max_len + 1 or x < points[-1][0]:
+                continue
+
+        points.append((x, col))
+
+    points = sorted(points, key = lambda x: x[1])
+
+    if len(points) < min_points:
+        # print('min points 2')
+        return False
+
+    line2 = Line.from_points(points[0][::-1], points[-1][::-1])
+
+    intersection = line1.intersection(line2, img)
+
+    # xx_copy = img.copy()
+    # pts1 = line1.limit_to_img(xx_copy)
+    # pts2 = line2.limit_to_img(xx_copy)
+    # cv2.line(xx_copy, *pts1, (0, 255, 0))
+    # cv2.line(xx_copy, *pts2, (255, 0, 0))
+
+
+    # plt.imshow(xx_copy)
+    # plt.show()
+
+    if intersection is None or np.sign(line1.slope) == np.sign(line2.slope):
+        return False
+    
+    elif bin_img[intersection.point.y, intersection.point.x] == 0:
+        return False
+
+
+    return True

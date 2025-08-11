@@ -1,7 +1,7 @@
 import numpy as np
 from collections import defaultdict
 from .lines import Line, Intersection, Point
-from .func import traverse_line, find_net_lines, check_items_sign, transform_intersection, transform_line
+from .func import traverse_line, find_net_lines, check_items_sign, transform_intersection, transform_line, is_court_corner
 
 import matplotlib.pyplot as plt
 import cv2
@@ -98,6 +98,7 @@ class CourtFinder:
                 if nearest_intersection is not None:
                     net_intersection = self._find_closer_outer_netpoint(line, intersect.point)
 
+
                     if net_intersection is not None:
                         return intersect, net_intersection
 
@@ -113,6 +114,11 @@ class CourtFinder:
                 break
             else:
                 point = new_point
+
+            # sprawdz czy jakies biale linie wokol - jesli nie to wyjdz
+            if not is_court_corner(img_piece):
+                print('wrong corner')
+                break
 
             net_line_groups = find_net_lines(img_piece, bin_thresh=0.9)
 
@@ -135,13 +141,13 @@ class CourtFinder:
 
                     # print('intersection: ', intersection)
 
-                    img_copy = img_piece.copy()
-                    pts1 = local_line.limit_to_img(img_copy)
-                    pts2 = net_line.limit_to_img(img_copy)
-                    cv2.line(img_copy, *pts1, (0, 0, 255))
-                    cv2.line(img_copy, *pts2, (0, 255, 255))
-                    plt.imshow(img_copy)
-                    plt.show()
+                    # img_copy = img_piece.copy()
+                    # pts1 = local_line.limit_to_img(img_copy)
+                    # pts2 = net_line.limit_to_img(img_copy)
+                    # cv2.line(img_copy, *pts1, (0, 0, 255))
+                    # cv2.line(img_copy, *pts2, (0, 255, 255))
+                    # plt.imshow(img_copy)
+                    # plt.show()
 
                     # print(net_line, local_line)
 
