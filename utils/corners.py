@@ -1,7 +1,8 @@
 import numpy as np
 from collections import defaultdict
 from .lines import Line, Intersection, Point
-from .func import traverse_line, find_net_lines, check_items_sign, transform_intersection, transform_line, is_court_corner
+from .func import (traverse_line, find_net_lines, check_items_sign, transform_intersection, transform_line,
+                   is_court_corner, find_point_neighbourhood)
 
 import matplotlib.pyplot as plt
 import cv2
@@ -96,8 +97,12 @@ class CourtFinder:
                         break
 
                 if nearest_intersection is not None:
-                    net_intersection = self._find_closer_outer_netpoint(line, intersect.point)
 
+                    img_piece, *_ = find_point_neighbourhood(intersect.point, self.offset, self.img, line)
+                    if not is_court_corner(img_piece):
+                        continue
+
+                    net_intersection = self._find_closer_outer_netpoint(line, intersect.point)
 
                     if net_intersection is not None:
                         return intersect, net_intersection
@@ -114,11 +119,6 @@ class CourtFinder:
                 break
             else:
                 point = new_point
-
-            # sprawdz czy jakies biale linie wokol - jesli nie to wyjdz
-            if not is_court_corner(img_piece):
-                print('wrong corner')
-                break
 
             net_line_groups = find_net_lines(img_piece, bin_thresh=0.9)
 
