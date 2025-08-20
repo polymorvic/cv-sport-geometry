@@ -3,6 +3,7 @@ import cv2
 import random
 import colorsys
 import numpy as np
+from skimage.morphology import skeletonize
 from typing import Literal, Iterable, Optional
 from utils.lines import Line, LineGroup, Point, Intersection
 from utils.const import ARRAY_X_INDEX, ARRAY_Y_INDEX
@@ -25,7 +26,7 @@ def get_pictures(path: str) -> dict[str, list[np.ndarray]]:
         }       
     """
     valid_extensions = {'.jpg', '.jpeg', '.png', '.webp'}
-    filenames = [f for f in os.listdir(path) if os.path.isfile(os.path.join(path, f)) and os.path.splitext(f)[1].lower() in valid_extensions]
+    filenames = sorted([f for f in os.listdir(path) if os.path.isfile(os.path.join(path, f)) and os.path.splitext(f)[1].lower() in valid_extensions])
 
     pics = {
         'rgb': [],
@@ -443,7 +444,7 @@ def _count_array_sequence_group(arr: np.ndarray) -> int:
     return counter
 
 
-def is_court_corner(img: np.ndarray, bin_thresh: float = 0.8, thresh_of_ones_lower: float = 0.05, thresh_of_ones_upper: float = 0.9) -> bool:
+def is_court_corner(img: np.ndarray, bin_thresh: float = 0.8) -> bool:
 
     gray = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
     bin_img = (gray > gray.max() * bin_thresh).astype(np.uint8)
@@ -451,14 +452,14 @@ def is_court_corner(img: np.ndarray, bin_thresh: float = 0.8, thresh_of_ones_low
     kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (9, 9))
     closed_bin_img = cv2.morphologyEx(bin_img, cv2.MORPH_CLOSE, kernel)
 
-    plt.imshow(img)
-    plt.show()
+    # plt.imshow(img)
+    # plt.show()
 
-    plt.imshow(gray)
-    plt.show()
+    # plt.imshow(gray)
+    # plt.show()
 
-    plt.imshow(bin_img)
-    plt.show()
+    # plt.imshow(bin_img)
+    # plt.show()
 
     plt.imshow(closed_bin_img)
     plt.show()
@@ -471,7 +472,7 @@ def is_court_corner(img: np.ndarray, bin_thresh: float = 0.8, thresh_of_ones_low
         return False
 
     if not np.all(np.diff(x_range)==1):
-        print('sekwencja')
+        # print('sekwencja')
         return False
     
     row_start, row_stop = ones_iloc[:,0].min(), ones_iloc[:,0].max()
@@ -492,3 +493,74 @@ def is_court_corner(img: np.ndarray, bin_thresh: float = 0.8, thresh_of_ones_low
     
     return True
 
+
+def angle_between_lines(line1: Line, line2: Line) -> float | None:
+    """
+    Returns the smallest angle in degrees between two lines.
+    """
+    if line1.slope is None and line2.slope is None:
+        return None
+    
+    if line1.slope is None and line2.slope is not None:
+        return np.degrees(np.arctan(abs(1 / line2.slope)))
+    if line2.slope is None and line1.slope is not None:
+        return np.degrees(np.arctan(abs(1 / line1.slope)))
+    
+    m1, m2 = line1.slope, line2.slope
+    if 1 + m1 * m2 == 0:
+        return 90.0
+    
+    tan_theta = abs((m1 - m2) / (1 + m1 * m2))
+    return np.degrees(np.arctan(tan_theta))
+
+
+def is_inner_sideline(img: np.ndarray, bin_thresh: float = 0.8, hough_line_thresh: int = 15, min_line_len: int | None = 5 , min_line_gap: int = 5) -> bool:
+
+    gray = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
+    bin_img = (gray > gray.max() * bin_thresh).astype(np.uint8)
+
+    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (9, 9))
+    closed_bin_img = cv2.morphologyEx(bin_img, cv2.MORPH_CLOSE, kernel)
+
+    skel = skeletonize(bin_img).astype(np.uint8)
+
+    # plt.imshow(img)
+    # plt.show()
+
+    # plt.imshow(gray)
+    # plt.show()
+
+    # plt.imshow(bin_img)
+    # plt.show()
+
+    # plt.imshow(skel)
+    # plt.show()
+
+    lines = cv2.HoughLinesP(skel, 1, np.pi/180, threshold=hough_line_thresh, minLineLength=min_line_len, maxLineGap=min_line_gap)
+    if lines is None:
+        lines = []
+            
+    img_copy = img.copy()
+    for line in lines:
+        x1, y1, x2, y2 = line[0]
+        cv2.line(img_copy, (x1, y1), (x2, y2), (0, 255, 0), 2)
+
+    # print(len(lines))
+    # plt.imshow(img_copy)
+    # plt.show()  
+
+    line_obj = [Line.from_hough_line(line[0]) for line in lines]
+    line_obj = [line for line in line_obj if line.slope is not None] 
+    line_groups = group_lines(line_obj)
+
+    if len(set(np.sign(line.slope) for line in line_groups)) <= 1:
+        return False
+    
+    angle = angle_between_lines(line_groups[0], line_groups[1])
+
+    return angle is not None and angle < 90
+
+
+# https://stackoverflow.com/a/33098888
+# https://scikit-image.org/
+# https://scikit-image.org/docs/0.25.x/auto_examples/edges/plot_skeleton.html

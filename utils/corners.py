@@ -2,7 +2,7 @@ import numpy as np
 from collections import defaultdict
 from .lines import Line, Intersection, Point
 from .func import (traverse_line, find_net_lines, check_items_sign, transform_intersection, transform_line,
-                   is_court_corner, find_point_neighbourhood)
+                   is_court_corner, find_point_neighbourhood, is_inner_sideline)
 
 import matplotlib.pyplot as plt
 import cv2
@@ -98,9 +98,10 @@ class CourtFinder:
 
                 if nearest_intersection is not None:
 
-                    img_piece, *_ = find_point_neighbourhood(intersect.point, self.offset, self.img, line)
-                    if not is_court_corner(img_piece):
-                        continue
+                    # img_piece, *_ = find_point_neighbourhood(intersect.point, self.offset, self.img, line)
+                    # if not is_court_corner(img_piece):
+                    #     print(intersect.point)
+                    #     continue
 
                     net_intersection = self._find_closer_outer_netpoint(line, intersect.point)
 
@@ -108,19 +109,30 @@ class CourtFinder:
                         return intersect, net_intersection
 
 
-    def _find_closer_outer_netpoint(self, line: Line, point: Point) -> Intersection | None:
+    def _find_closer_outer_netpoint(self, line: Line, point: Point, warmup: int = 5) -> Intersection | None:
         net_intersection = None
         intersection_global = None
-
+        i = 0
         while net_intersection is None:
+            i += 1
             new_point, img_piece, original_range = traverse_line(point, self.offset, self.img, line)
 
-            if new_point.y > point.y:
+            # sprawdzanie czy linia boczna wewnetrza po drodze
+            # jesli tak to break
+            # if is_inner_sideline(img_piece):
+            #     break
+
+            print(f'{new_point.y=}{point.y=}')
+            if new_point.y >= point.y:
+                print('point new point')
                 break
             else:
                 point = new_point
 
-            net_line_groups = find_net_lines(img_piece, bin_thresh=0.9)
+            if i < warmup:
+                continue
+
+            net_line_groups = find_net_lines(img_piece, bin_thresh=0.8)
 
             intersections = []
             local_line = transform_line(line, self.img, *original_range, False)
