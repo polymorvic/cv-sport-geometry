@@ -98,10 +98,10 @@ class CourtFinder:
 
                 if nearest_intersection is not None:
 
-                    # img_piece, *_ = find_point_neighbourhood(intersect.point, self.offset, self.img, line)
-                    # if not is_court_corner(img_piece):
-                    #     print(intersect.point)
-                    #     continue
+                    img_piece, *_ = find_point_neighbourhood(intersect.point, self.offset, self.img, line)
+                    if not is_court_corner(img_piece):
+                        print(intersect.point)
+                        continue
 
                     net_intersection = self._find_closer_outer_netpoint(line, intersect.point)
 
