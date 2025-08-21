@@ -119,8 +119,8 @@ class CourtFinder:
 
             # sprawdzanie czy linia boczna wewnetrza po drodze
             # jesli tak to break
-            # if is_inner_sideline(img_piece):
-            #     break
+            if is_inner_sideline(img_piece):
+                break
 
             print(f'{new_point.y=}{point.y=}')
             if new_point.y >= point.y:
