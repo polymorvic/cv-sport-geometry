@@ -58,7 +58,7 @@ class CourtFinder:
                 self.line_intersection_mapping[line].add(intersect)
 
     
-    def find_closer_outer_baseline_point(self) -> tuple[Intersection, Point]:
+    def find_closer_outer_baseline_point(self, bin_thresh: float) -> tuple[Intersection, Point]:
         """
         Finds the nearest outer baseline intersection point within a specific angular range.
 
@@ -98,18 +98,18 @@ class CourtFinder:
 
                 if nearest_intersection is not None:
 
-                    img_piece, *_ = find_point_neighbourhood(intersect.point, self.offset, self.img, line)
-                    if not is_court_corner(img_piece):
-                        print(intersect.point)
-                        continue
+                    # img_piece, *_ = find_point_neighbourhood(intersect.point, self.offset, self.img, line)
+                    # if not is_court_corner(img_piece):
+                    #     print(intersect.point)
+                    #     continue
 
-                    net_intersection = self._find_closer_outer_netpoint(line, intersect.point)
+                    net_intersection = self._find_closer_outer_netpoint(line, intersect.point, bin_thresh)
 
                     if net_intersection is not None:
                         return intersect, net_intersection
 
 
-    def _find_closer_outer_netpoint(self, line: Line, point: Point, warmup: int = 5) -> Intersection | None:
+    def _find_closer_outer_netpoint(self, line: Line, point: Point, bin_thresh: float, warmup: int = 5) -> Intersection | None:
         net_intersection = None
         intersection_global = None
         i = 0
@@ -132,7 +132,7 @@ class CourtFinder:
             if i < warmup:
                 continue
 
-            net_line_groups = find_net_lines(img_piece, bin_thresh=0.8)
+            net_line_groups = find_net_lines(img_piece, bin_thresh=bin_thresh)
 
             intersections = []
             local_line = transform_line(line, self.img, *original_range, False)
