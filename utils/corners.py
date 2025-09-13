@@ -292,8 +292,8 @@ class CourtFinder:
         p1, p2 = (x1, y1), (x2, y2)
 
         # img_copy = img_piece.copy()
-        # cv2.circle(img_copy, (x1, y1), 2, (255, 0, 0), -1)
-        # cv2.circle(img_copy, (x2, y2), 2, (255, 0, 0), -1)
+        # cv2.circle(img_copy, (x1, y1), 1, (255, 0, 0), -1)
+        # cv2.circle(img_copy, (x2, y2), 1, (255, 0, 0), -1)
 
         # plt.imshow(img_copy)
         # plt.show()
