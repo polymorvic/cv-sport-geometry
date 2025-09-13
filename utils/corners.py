@@ -171,7 +171,136 @@ class CourtFinder:
                 intersection_global = transform_intersection(net_intersection, self.img, *original_range)
 
 
-        return intersection_global
+        return intersection_global, line
+    
+    
+    def find_further_outer_baseline_intersection(self, closer_outer_baseline_intersection: Intersection, used_line: Line, cannys_lower_thresh: int = 20, cannys_upper_thresh: int = 100, warmup: int = 5, offset: int = None) -> Intersection | None:
+        further_outer_baseline_intersection = None
+        offset = self.netline_offset if not offset else offset
+        point = closer_outer_baseline_intersection.point
+        unused_line = closer_outer_baseline_intersection.other_line(used_line)
+        i = 0
+        intersections = []
+        while True:
+            i += 1
+            stop = False
+            new_point, img_piece, original_range = traverse_line(point, offset, self.img, unused_line)
+            local_line = transform_line(unused_line, self.img, *original_range, False)
+
+            if new_point.y >= point.y:
+                print('break point')
+                break
+            else:
+                point = new_point
+
+            if i < warmup:
+                continue
+
+            further_outer_baseline_intersection = get_further_outer_baseline_corner(img_piece, local_line, cannys_lower_thresh, cannys_upper_thresh)
+
+            if further_outer_baseline_intersection:
+                break
+            else:
+                continue
+
+        return transform_intersection(further_outer_baseline_intersection, self.img, *original_range), local_line
 
 
+    def find_netline(self, closer_outer_netpoint: Point, baseline: Line, max_line_gap: int, cannys_thresh_lower: int = 50, cannys_thresh_upper: int = 150, hough_thresh: int = 100, min_line_len: int = 100) -> Line:
+        pic_copy = self.img.copy()
+        img_gray = cv2.cvtColor(pic_copy, cv2.COLOR_RGB2GRAY)
+        inv_img_gray = 255 - img_gray
+        edges = cv2.Canny(inv_img_gray, cannys_thresh_lower, cannys_thresh_upper)
 
+        lines = cv2.HoughLinesP(edges, 1, np.pi/180, threshold=hough_thresh, minLineLength=min_line_len, maxLineGap=max_line_gap)
+        lines = [] if lines is None else lines
+            
+        line_obj = [Line.from_hough_line(line[0]) for line in lines]
+        line_obj = [line for line in line_obj if line.slope is not None and np.sign(line.slope) == np.sign(baseline.slope)]
+
+        return get_closest_line(line_obj, closer_outer_netpoint)
+    
+
+    def find_further_doubles_sideline(self, further_outer_baseline_point: Point, prev_local_line: Line, offset: int, extra_offset: int, bin_thresh: float, surface_type: str):
+        img_piece, *original_range = find_point_neighbourhood_simple(further_outer_baseline_point, offset + extra_offset, self.img, prev_local_line)
+
+        # plt.imshow(img_piece)
+        # plt.show()
+
+        img_gray = cv2.cvtColor(img_piece, cv2.COLOR_RGB2GRAY)
+        
+        if surface_type == 'clay':
+            edges = cv2.Canny(img_gray, 150, 500)
+
+            lines = cv2.HoughLinesP(edges, 1, np.pi/180, threshold=20, minLineLength=50, maxLineGap=10)
+            lines = [] if lines is None else lines
+            
+            line_obj = [Line.from_hough_line(line[0]) for line in lines]
+            line_obj = [line for line in line_obj if line.slope is not None and np.sign(line.slope) != np.sign(prev_local_line.slope)]
+
+            
+            local_point = transform_point(further_outer_baseline_point, *original_range, False)
+            line = get_closest_line(line_obj, local_point)
+
+            # img_copy = img_piece.copy()
+            # pts = line.limit_to_img(img_copy)
+            # cv2.line(img_copy, *pts, (255, 0, 0))
+            # plt.imshow(img_copy)
+            # plt.show()
+
+            return transform_line(line, self.img, *original_range)
+
+
+        bin_img = (img_gray > img_gray.max() * bin_thresh).astype(np.uint8)
+        # plt.imshow(bin_img)
+        # plt.show()
+
+        contours, hierarchy = cv2.findContours(bin_img, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        filtered_contours = [con for con in contours if len(con) > 0 and (con[:, 0, 1].min() != 0 or con[:, 0, 0].min() != 0)]
+
+        if filtered_contours:
+            areas = [cv2.contourArea(con) for con in filtered_contours]
+            biggest_contour = filtered_contours[areas.index(max(areas))]
+
+        img_copy = img_piece.copy()
+        detected_obj = cv2.drawContours(np.zeros_like(img_copy), contours, areas.index(max(areas)), 255, thickness=1)
+        # plt.imshow(detected_obj)
+        # plt.show()
+
+        mask = np.zeros_like(bin_img, dtype=np.uint8)
+        cv2.fillPoly(mask, [biggest_contour], 1)
+
+        # plt.imshow(mask)
+        # plt.show()
+
+        ones = np.argwhere(mask==1)
+        if prev_local_line.slope < 0:
+            x_max = ones[:, 1].max() 
+            rightmost_indices = ones[:, 1] == x_max 
+            leftmost_indices = ones[:, 1] == 0 
+            y1, x1 = ones[rightmost_indices][-1] 
+            y2, x2 = ones[leftmost_indices][0]
+
+        else:
+            x_min = ones[:, 1].min() 
+            leftmost_indices = ones[:, 1] == x_min 
+            rightmost_indices = ones[:, 1] == mask.shape[1] - 1 
+            y1, x1 = ones[leftmost_indices][0] 
+            y2, x2 = ones[rightmost_indices][0]
+
+
+        p1, p2 = (x1, y1), (x2, y2)
+
+        # img_copy = img_piece.copy()
+        # cv2.circle(img_copy, (x1, y1), 2, (255, 0, 0), -1)
+        # cv2.circle(img_copy, (x2, y2), 2, (255, 0, 0), -1)
+
+        # plt.imshow(img_copy)
+        # plt.show()
+
+        line = Line.from_points(p1, p2)
+        return transform_line(line, self.img, *original_range)
+
+
+    def scan_baseline(self):
+        pass
