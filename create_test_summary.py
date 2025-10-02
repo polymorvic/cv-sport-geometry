@@ -30,24 +30,27 @@ def get_point_weights(row):
     return weighted_sum / sum(applied_weights)
 
 
-def run(root_test_dir: Path) -> None:
+def run(root_test_dir: Path, n_recent: int | None = None) -> None:
     """_summary_
 
     Args:
         root_test_dir (Path): _description_
     """
     dt_string = datetime.now().strftime('%Y-%m-%d-%H_%M_%S')
-    #root_test_dir = Path('pics/tests')
     dfs = []
     tuple_colnames = []
     cols_to_remove = ['pic_index', 'pic_name', 'bin_thresh']
     i = 0
-    for subdir in root_test_dir.iterdir():
-        print(i)
+    subdirs = sorted(root_test_dir.iterdir(), reverse=True) 
+    for subdir in subdirs:
+        print(i, subdir)
+
         if subdir.is_file():
             continue
 
-        
+        if n_recent and i >= n_recent:
+            break
+
         temp_df = pd.read_csv(subdir / 'test_df.csv')
         temp_df['summary'] = temp_df.apply(get_point_weights, axis=1)
 
