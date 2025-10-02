@@ -1,0 +1,177 @@
+
+
+{
+    "testing_pics_dir": "pics/tests",
+    "commit": "02102025-run1",
+    "data": [
+        {
+            "pic_name": "tc1.jpg",
+            "bin_thresh": 0.7,
+            "bin_thresh_endline_scan": {"baseline": 0.75, "netline": 0.8},
+            "max_line_gap": 10,
+            "hough_thresh": 10,
+            "offset": 20,
+            "extra_offset": 15,
+            "surface_type": "another",
+            "canny_thresh": {"lower": 20, "upper": 100},
+
+
+
+            "closer_outer_baseline_point": {"x": 46.44985282367929, "y": 95.66969885972172},
+            "closer_outer_netpoint": {"x": 16.4974937241008, "y": 60.53140650506159},
+            "further_outer_netpoint": {"x": 51.992669301240234, "y": 57.50025342631372},
+            "further_outer_baseline_point": {"x": 99.12581189046688, "y": 62.47877255978111},
+            "closer_inner_baseline_point": {"x": 65.10273208734333, "y": 84.41632096409384},
+            "further_inner_baseline_point": {"x": 97.27253191037258, "y": 63.728598776971225},
+            "closer_inner_netpoint": {"x": 23.092577420110896, "y": 60.377360617881436},
+            "further_inner_netpoint": {"x": 50.1070722157299, "y": 57.82339282728478}
+        },
+        {
+            "pic_name": "tc2.jpg",
+            "bin_thresh": 0.7,
+            "bin_thresh_endline_scan": {"baseline": 0.8, "netline": 0.8},
+            "max_line_gap": 10,
+            "offset": 20,
+            "extra_offset": 15,
+            "surface_type": "another",
+            "canny_thresh": {"lower": 20, "upper": 100},
+
+
+            
+            "closer_outer_baseline_point": {"x": 33.28360527953713, "y": 91.33623113522225},
+            "closer_outer_netpoint": {"x": 7.34649629600873, "y": 71.36027015144025},
+            "further_outer_netpoint": {"x": 48.72394959884993, "y": 67.17420107458824},
+            "further_outer_baseline_point": {"x": 89.8716821974409, "y": 72.65465113920636},
+            "closer_inner_baseline_point": {"x": 47.386072871793566, "y": 86.6497461873803},
+            "further_inner_baseline_point": {"x": 86.5449948438269, "y": 73.83099440000277},
+            "closer_inner_netpoint": {"x": 14.485910614685327, "y": 70.60612629693057},
+            "further_inner_netpoint": {"x": 44.85150608681582, "y": 67.55931839586849}
+        },
+        {
+            "pic_name": "tc3.jpg",
+            "bin_thresh": 0.6,
+            "bin_thresh_endline_scan": {"baseline": 0.71, "netline": 0.65},
+            "max_line_gap": 100,
+            "offset": 20,
+            "extra_offset": 15,
+            "surface_type": "another",
+            "canny_thresh": {"lower": 20, "upper": 100},
+
+
+            
+            "closer_outer_baseline_point": {"x": 59.74869918762536, "y": 95.84246226438633},
+            "closer_outer_netpoint": {"x": 82.40129162364398, "y": 80.8547953656308},
+            "further_outer_netpoint": {"x": 48.84116209175057, "y": 77.35429638502525},
+            "further_outer_baseline_point": {"x": 12.792864530089368, "y": 81.72250185426186},
+            "closer_inner_baseline_point": {"x": 48.94268849130036, "y": 92.63612317189595},
+            "further_inner_baseline_point": {"x": 15.963903207921668, "y": 82.76251515837694},
+            "closer_inner_netpoint": {"x": 76.56636322095169, "y": 80.32506883752727},
+            "further_inner_netpoint": {"x": 51.49384723870949, "y": 77.58900490015857}
+        },
+        {
+            "pic_name": "tc4.jpg",
+            "bin_thresh": 0.7,
+            "bin_thresh_endline_scan": {"baseline": 0.8, "netline": 0.55},
+            "max_line_gap": 10,
+            "offset": 20,
+            "extra_offset": 15,
+            "surface_type": "another",
+            "canny_thresh": {"lower": 20, "upper": 100},
+
+
+
+            "closer_outer_baseline_point": {"x": 59.916368430195654, "y": 99.13275635892832},
+            "closer_outer_netpoint": {"x": 82.54011558858731, "y": 56.3738742295681},
+            "further_outer_netpoint": {"x": 44.70826373983965, "y": 46.81624224457605},
+            "further_outer_baseline_point": {"x": 6.256750602312455, "y": 65.873133307585},
+            "closer_inner_baseline_point": {"x": 49.64463608495574, "y": 92.79894351974592},
+            "further_inner_baseline_point": {"x": 10.498666830281172, "y": 68.5312774570556},
+            "closer_inner_netpoint": {"x": 76.39132841914335, "y": 55.08179686522442},
+            "further_inner_netpoint": {"x": 48.17867764046734, "y": 47.82807460832657}
+        },
+        {
+            "pic_name": "tc5.jpg",
+            "bin_thresh": 0.75,
+            "bin_thresh_endline_scan": {"baseline": 0.8, "netline": 0.8},
+            "max_line_gap": 100,
+            "offset": 20,
+            "extra_offset": 40,
+            "surface_type": "another",
+            "canny_thresh": {"lower": 20, "upper": 100},
+
+
+
+            "closer_outer_baseline_point": {"x": 41.34650437893544, "y": 88.63019815527868},
+            "closer_outer_netpoint": {"x": 10.144049890721622, "y": 69.50141836134647},
+            "further_outer_netpoint": {"x": 51.23578930294609, "y": 66.34498406867483},
+            "further_outer_baseline_point": {"x": 97.12266716128224, "y": 73.15209699248703},
+            "closer_inner_baseline_point": {"x": 53.84521288162528, "y": 85.37685433247132},
+            "further_inner_baseline_point": {"x": 93.52266877676779, "y": 74.28104098185611},
+            "closer_inner_netpoint": {"x": 17.3848625017012, "y": 69.36994852628172},
+            "further_inner_netpoint": {"x": 48.593087684130204, "y": 66.85192546755275}
+        },
+        {
+            "pic_name": "tc6.webp",
+            "bin_thresh": 0.6,
+            "bin_thresh_endline_scan": {"baseline": 0.7, "netline": 0.7},
+            "max_line_gap": 10,
+            "offset": 20,
+            "extra_offset": 50,
+            "surface_type": "another",
+            "canny_thresh": {"lower": 20, "upper": 100},
+
+
+
+            "closer_outer_baseline_point": {"x": 81.69912080137338, "y": 96.17424404121356},
+            "closer_outer_netpoint": {"x": 23.6971847346475, "y": 68.44295534099237},
+            "further_outer_netpoint": {"x": 54.98734017872079, "y": 60.76311202952277},
+            "further_outer_baseline_point": {"x": 98.62108261069604, "y": 68.98265872837383},
+            "closer_inner_baseline_point": {"x": 85.8643782688496, "y": 89.65898164340021},
+            "further_inner_baseline_point": {"x": 97.6858169031681, "y": 70.61866341005106},
+            "closer_inner_netpoint": {"x": 29.31549556567902, "y": 67.0394734908577},
+            "further_inner_netpoint": {"x": 52.428174781517626, "y": 61.43885980467299}
+        },
+        {
+            "pic_name": "tc7.jpg",
+            "bin_thresh": 0.7,
+            "bin_thresh_endline_scan": {"baseline": 0.8, "netline": 0.55},
+            "max_line_gap": 10,
+            "offset": 40,
+            "extra_offset": 15,
+            "surface_type": "clay",
+            "canny_thresh": {"lower": 150, "upper": 200},
+
+
+
+            "closer_outer_baseline_point": {"x": 61.206738890002086, "y": 97.7988305829671},
+            "closer_outer_netpoint": {"x": 85.38197746124308, "y": 37.60531306333672},
+            "further_outer_netpoint": {"x": 38.786562066787205, "y": 27.020907345157735},
+            "further_outer_baseline_point": {"x": 1.291266205688214, "y": 70.02442457729107},
+            "closer_inner_baseline_point": {"x": 51.83489912315829, "y": 93.45035223606105},
+            "further_inner_baseline_point": {"x": 7.12240808040486, "y": 72.894291137337},
+            "closer_inner_netpoint": {"x": 78.91364360196717, "y": 35.739062317891666},
+            "further_inner_netpoint": {"x": 43.51263751343637, "y": 28.24074936657655}
+        },
+        {
+            "pic_name": "tc8.jpg",
+            "bin_thresh": 0.7,
+            "bin_thresh_endline_scan": {"baseline": 0.75, "netline": 0.75},
+            "max_line_gap": 10,
+            "offset": 20,
+            "extra_offset": 75,
+            "surface_type": "another",
+            "canny_thresh": {"lower": 50, "upper": 150},
+
+
+
+            "closer_outer_baseline_point": {"x": 65.16093652230485, "y": 92.0895366154859},
+            "closer_outer_netpoint": {"x": 66.18748904961687, "y": 57.64732297839845},
+            "further_outer_netpoint": {"x": 35.21082888112084, "y": 53.383110103139806},
+            "further_outer_baseline_point": {"x": 1.0812126606388572, "y": 72.3305418554989},
+            "closer_inner_baseline_point": {"x": 54.25499701431197, "y": 89.11744209971646},
+            "further_inner_baseline_point": {"x": 6.871497485000069, "y": 74.3048590741796},
+            "closer_inner_netpoint": {"x": 61.90611184033757, "y": 57.18087487906164},
+            "further_inner_netpoint": {"x": 38.67626064246601, "y": 53.77491588992239}
+        }
+    ]
+}

@@ -1,40 +1,61 @@
 from __future__ import annotations
 import copy
 import numpy as np
+from abc import ABC, abstractmethod
+from typing import TypeVar, Generic, Literal
+
+T = TypeVar('T', int, float)
+
+class Hashable(ABC):
+
+    @abstractmethod
+    def _key_(self):
+        NotImplemented
 
 
-class Point[T: (int, float)](tuple[T, T]):
+    def __hash__(self):
+        return hash(self._key_())
+
+
+    def __eq__(self, other):
+        if not isinstance(other, self.__class__):
+            return False
+        return self._key_() == other._key_()
+
+
+class Point(Generic[T], Hashable):
     """
-    Immutable 2D point represented as a generic tuple of two numbers.
+    Immutable 2D point represented as a generic point with two numbers.
 
-    This class is a generic wrapper around a fixed-length `tuple` with exactly
-    two elements: the X and Y coordinates. It is generic in `T`, where `T`
-    must be either `int` or `float`.
-
-    Since `tuple` is immutable, this class uses `__new__` (not `__init__`)
-    to construct instances from `x` and `y` values. Once created, a `Point`
-    instance cannot be modified.
+    This class is generic in `T`, where `T` must be either `int` or `float`.
+    It implements tuple-like behavior while inheriting from Hashable.
 
     Type Parameters:
         T (int | float): The coordinate type.
     """
-    __slots__ = ()
+    __slots__ = ('_x', '_y')
 
-    def __new__(cls, x: T, y: T):
+    def __init__(self, x: T, y: T):
         """
         Create a new Point instance from X and Y coordinates.
 
         Args:
             x (T): The X coordinate (int or float).
             y (T): The Y coordinate (int or float).
-
-        Returns:
-            Point[T]: A new immutable Point instance.
         """
-        return super().__new__(cls, (x, y))
+        object.__setattr__(self, '_x', x)
+        object.__setattr__(self, '_y', y)
+
+    def __setattr__(self, name, value):
+        """Prevent modification after initialization."""
+        raise AttributeError(f"'Point' object attribute '{name}' is read-only")
+
+    def _key_(self):
+        """Return the key for hashing and equality comparison."""
+        return (self._x, self._y)
 
     @classmethod
-    def from_xy(cls, x: T, y: T) -> Point[T]:
+    def from_xy(cls, x: T, y: T) -> 'Point[T]':
         """
         Create a Point from separate X and Y values.
 
@@ -48,16 +69,12 @@ class Point[T: (int, float)](tuple[T, T]):
         return cls(x, y)
     
     @classmethod
-    def from_iterable(cls, iterable: tuple[T, T] | list[T]) -> Point[T]:
+    def from_iterable(cls, iterable: Union[tuple[T, T], list[T]]) -> 'Point[T]':
         """
         Create a Point from an iterable of exactly two elements.
 
-        The iterable must contain exactly two values representing the X and Y
-        coordinates, respectively.
-
         Args:
-            iterable (tuple[T, T] | list[T]):
-                An iterable containing exactly two numeric elements.
+            iterable: An iterable containing exactly two numeric elements.
 
         Returns:
             Point[T]: A new immutable Point instance.
@@ -72,26 +89,52 @@ class Point[T: (int, float)](tuple[T, T]):
 
     @property
     def x(self) -> T:
-        """
-        Get the X coordinate of the point.
-
-        Returns:
-            T: The X coordinate (int or float).
-        """
-        return self[0]
+        """Get the X coordinate of the point."""
+        return self._x
 
     @property
     def y(self) -> T:
-        """
-        Get the Y coordinate of the point.
+        """Get the Y coordinate of the point."""
+        return self._y
+    
+    def distance(self, another_point: 'Point') -> float:
+        """Calculate Euclidean distance to another point."""
+        return np.linalg.norm(np.array([self.x, self.y]) - np.array([another_point.x, another_point.y]))
+    
+    def is_in_area(self, p1: Point, p2: Point) -> bool:
+        return p1.x < self.x < p2.x and p1.y < self.y < p2.y
 
-        Returns:
-            T: The Y coordinate (int or float).
-        """
-        return self[1]
+    def __getitem__(self, index: int) -> T:
+        """Allow indexing like a tuple."""
+        if index == 0:
+            return self._x
+        elif index == 1:
+            return self._y
+        else:
+            raise IndexError("Point index out of range")
+
+    def __iter__(self):
+        """Allow unpacking like a tuple."""
+        yield self._x
+        yield self._y
+
+    def __len__(self) -> int:
+        """Return length (always 2)."""
+        return 2
+
+    def __repr__(self) -> str:
+        """Return string representation."""
+        return f"Point({self._x}, {self._y})"
+
+    def __str__(self) -> str:
+        """Return string representation."""
+        return f"({self._x}, {self._y})"
+    
+    def as_int(self) -> Point:
+        return Point(int(self.x), int(self.y))
 
     
-class Line:
+class Line(Hashable):
     """
     Represents a 2D line in either slope-intercept form (y = ax + b) or vertical line form (xv = constant).
     Distinguishes the existance of vertical lines where there is no slope and intercept but constant x-value instead.
@@ -123,7 +166,7 @@ class Line:
         self.xv = xv
 
 
-    def __key(self):
+    def _key_(self):
         """
         Returns a tuple of identifying attributes used for hashing and equality comparison.
 
@@ -133,31 +176,6 @@ class Line:
         return (self.slope, self.intercept, self.xv)
 
     
-    def __hash__(self):
-        """
-        Returns the hash of the line based on its identifying attributes.
-
-        Returns:
-            int: Hash value of the line.
-        """
-        return hash(self.__key())
-
-
-    def __eq__(self, other):
-        """
-        Checks if this line is equal to another line.
-
-        Args:
-            other (Line): Another Line object to compare with.
-
-        Returns:
-            bool: True if both lines are equal, False otherwise.
-        """
-        if isinstance(other, Line):
-            return self.__key() == other.__key()
-        return NotImplemented
-
-
     def __repr__(self):
         """
         Returns a string representation of the line.
@@ -358,7 +376,7 @@ class Line:
         raise ValueError("Line does not intersect the image in at least two places.")
 
 
-    def check_point_on_line(self, point: tuple[int, int], tolerance: int = None) -> bool:
+    def check_point_on_line(self, point: Point, tolerance: int = None) -> bool:
         """
         Checks whether a given point lies on the line, optionally within a specified tolerance.
 
@@ -370,24 +388,22 @@ class Line:
         Returns:
             bool: True if the point lies on the line (within tolerance if provided), False otherwise.
         """
-        point_x, point_y = point
 
-        y = self.y_for_x(point_x)
-        x = self.x_for_y(point_y)
+        y = self.y_for_x(point.x)
+        x = self.x_for_y(point.y)
 
         # If point is outside defined part of the line
         if y is None or x is None:
             return False
-
-        line_point_y = int(y)
-        line_point_x = int(x)
+        
+        line_point = Point(x, y).as_int()
 
         if tolerance is None:
-            return point_x == line_point_x and point_y == line_point_y
+            return point.x == line_point.x and point.y == line_point.y
 
         return (
-            abs(line_point_y - point_y) < tolerance and
-            abs(line_point_x - point_x) < tolerance
+            abs(line_point.y - point.y) < tolerance and
+            abs(line_point.x - point.x) < tolerance
         )  
 
 
@@ -446,7 +462,6 @@ class Line:
         return cls(slope, intercept, xv)
     
 
-
 class LineGroup(Line):
     """
     A group of Line objects that are approximately aligned, represented as a single approximated line.
@@ -466,8 +481,14 @@ class LineGroup(Line):
 
 
     def __repr__(self) -> str:
-        """Return a string representation of the lines in the group."""
-        return f'{self.lines}'
+        """Return a string representation of the approximated line equation."""
+        if not self.lines:
+            return "LineGroup(empty)"
+        
+        if self.xv is not None:
+            return f"LineGroup: x = {self.xv:.2f} (from {len(self.lines)} lines)"
+        else:
+            return f"LineGroup: y = {self.slope:.2f} * x + {self.intercept:.2f} (from {len(self.lines)} lines)"
     
 
     def process_line(self, line: Line, thresh_theta: float | int, thresh_intercept: float | int) -> bool:
@@ -498,7 +519,12 @@ class LineGroup(Line):
                 self.lines.append(line)
                 self._calculate_line_approximation()
 
+        self.lines = sorted(self.lines, key = lambda line: -line.intercept)
         return found
+    
+
+    def get_line(self, line_type: Literal['min', 'max']) -> Line:
+        return {'min': self.lines[0],'max': self.lines[-1]}[line_type]
     
 
     def _calculate_line_approximation(self) -> None:
@@ -520,7 +546,7 @@ class LineGroup(Line):
             self.intercept = np.median([line.intercept for line in self.lines])
 
 
-class Intersection:
+class Intersection(Hashable):
     """
     Represents the intersection point of two lines and the angle between them.
     """
@@ -555,12 +581,47 @@ class Intersection:
 
     def __repr__(self):
         """
-        Return a string representation of the intersection point.
+        Return a string representation of the intersection point and both lines.
+        Lines are shown in order of slope (lower slope first).
 
         Returns:
-            str: The intersection point as a string.
+            str: The intersection point and equations of both lines ordered by slope.
         """
-        return f'{self.point}'
+        def format_line(line):
+            """Helper function to format a line equation."""
+            if line.xv is not None:
+                return f"x = {line.xv:.2f}"
+            else:
+                return f"y = {line.slope:.2f} * x + {line.intercept:.2f}"
+        
+        lines = [self.line1, self.line2]
+        lines.sort(key=lambda line: line.slope if line.slope is not None else np.inf)
+        
+        line1_eq = format_line(lines[0])
+        line2_eq = format_line(lines[1])
+        
+        return f"Point{self.point} line1: [{line1_eq}] line2: [{line2_eq}]"
+    
+
+    def _key_(self):
+        """
+        Returns a tuple of identifying attributes used for hashing and equality comparison.
+        Links the intersection point with both lines for unique identification.
+
+        Returns:
+            tuple: A tuple containing the point coordinates and the keys of both lines,
+                sorted by slope (lower slope first, vertical lines last) to ensure consistent ordering.
+        """
+        def sort_key(line):
+            primary = line.slope if line.slope is not None else np.inf
+            secondary = line.xv if line.xv is not None else -np.inf
+            return (primary, secondary)
+        
+        lines = [self.line1, self.line2]
+        lines.sort(key=sort_key)
+        
+        line_keys = [line._key_() for line in lines]
+        return (self.point, tuple(line_keys))
     
     
     def distance(self, another_intersection: Intersection) -> float:
@@ -574,4 +635,25 @@ class Intersection:
             float: The Euclidean distance.
         """
         return np.linalg.norm(np.array(self.point) - np.array(another_intersection.point))
+    
+
+    def find_common_line(self, another_intersection: Intersection) -> Line | None:
+
+        for line in (self.line1, self.line2):
+            for another_line in (another_intersection.line1, another_intersection.line2):
+                print(line._key_(), another_line._key_())
+                if line.slope == another_line.slope:
+                    return line
+                
+
+    def other_line(self, used: Line) -> Line:
+        """
+        Return the line from this intersection that is NOT `used`.
+        Raises ValueError if `used` doesn't belong to this intersection.
+        """
+        if self.line1 is used or getattr(self.line1, "_key_", lambda: None)() == getattr(used, "_key_", lambda: object)():
+            return self.line2
+        if self.line2 is used or getattr(self.line2, "_key_", lambda: None)() == getattr(used, "_key_", lambda: object)():
+            return self.line1
+        raise ValueError("The provided line does not belong to this intersection.")
     

@@ -5,6 +5,12 @@ build/
 dist/
 wheels/
 *.egg-info
-
+tests/
 # Virtual environments
 .venv
+.idea
+
+
+*.jpg
+*.csv
+*.png

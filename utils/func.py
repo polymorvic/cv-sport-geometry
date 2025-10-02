@@ -7,8 +7,8 @@ from skimage.morphology import skeletonize
 from typing import Literal, Iterable, Optional
 from utils.lines import Line, LineGroup, Point, Intersection
 from utils.const import ARRAY_X_INDEX, ARRAY_Y_INDEX
-
 import matplotlib.pyplot as plt
+
 
 def get_pictures(path: str) -> dict[str, list[np.ndarray]]:
     """
@@ -214,25 +214,59 @@ def find_point_neighbourhood(point: Point, offset: int, img: np.ndarray, line: L
                 start = 0
         return start, end
 
-    x_start = max(int(point.x) - offset, 0)
-    x_end = min(int(point.x) + offset, width - 1)
-    if x_start > x_end:
-        x_start, x_end = x_end, x_start
-
-    if line.slope is None or line.intercept is None:
+    if abs(line.slope) > 1:
         y_start = max(int(point.y) - offset, 0)
         y_end = min(int(point.y) + offset, height - 1)
-    else:
-        y0 = max(min(line.y_for_x(x_start), height - 1), 0)
-        y1 = max(min(line.y_for_x(x_end), height - 1), 0)
-        y_start, y_end = min(y0, y1), max(y0, y1)
 
-        curr_h = y_end - y_start + 1
-        if curr_h < offset:
-            y_start, y_end = clamp_window_around(int(point.y), offset, height)
+        if y_start > y_end:
+            y_start, y_end = y_end, y_start
 
-    if y_start > y_end:
-        y_start, y_end = y_end, y_start
+        if line.slope is None or line.intercept is None:
+            x_start = max(int(point.x) - offset, 0)
+            x_end = min(int(point.x) + offset, width - 1)
+        else:
+            x0 = max(min(line.x_for_y(y_start), width - 1), 0)
+            x1 = max(min(line.x_for_y(y_end), width - 1), 0)
+            x_start, x_end = min(x0, x1), max(x0, x1)
+
+            curr_w = x_end - x_start + 1
+            if curr_w < offset:
+                x_start, x_end = clamp_window_around(int(point.x), offset, width)
+
+        if x_start > x_end:
+            x_start, x_end = x_end, x_start
+
+    else: 
+        x_start = max(int(point.x) - offset, 0)
+        x_end = min(int(point.x) + offset, width - 1)
+
+        # print(f'{x_start=}{x_end=}')
+        if x_start > x_end:
+            x_start, x_end = x_end, x_start
+
+        # print(f'{x_start=}{x_end=}')
+
+        # print(f'{line.slope=}{line.intercept=}')
+        if line.slope is None or line.intercept is None:
+            y_start = max(int(point.y) - offset, 0)
+            y_end = min(int(point.y) + offset, height - 1)
+        else:
+            y0 = max(min(line.y_for_x(x_start), height - 1), 0)
+            y1 = max(min(line.y_for_x(x_end), height - 1), 0)
+            y_start, y_end = min(y0, y1), max(y0, y1)
+
+            curr_h = y_end - y_start + 1
+            if curr_h < offset:
+                y_start, y_end = clamp_window_around(int(point.y), offset, height)
+
+        # print(f'{y_start=}{y_end=}')
+
+        if y_start > y_end:
+            y_start, y_end = y_end, y_start
+
+        # print(f'{y_start=}{y_end=}')
+
+        # print('!!!!!!!!!!!!!!!!', f'{y_start=}{y_end=}', f'{x_start=}{x_end=}', '!!!!!!!!!!!!!!!!')
 
     return img[y_start:y_end+1, x_start:x_end+1], x_start, y_start
 
@@ -301,7 +335,7 @@ def _unit_tangent(line: Line) -> tuple[float, float]:
     return (dx / norm, dy / norm)
 
 
-def traverse_line(point: Point, offset: int, img: np.ndarray, line: Line, direction: Literal["up", "down"] = "up") -> tuple[Point, np.ndarray, list[int, int]]:
+def traverse_line(point: Point, offset: int, img: np.ndarray, line: Line, direction: Literal["up", "down"] = "up", neighbourhood_type: Literal['complex', 'simple'] = 'complex') -> tuple[Point, np.ndarray, list[int, int]]:
     """
     Traverse along a given line from a starting point by a fixed offset, 
     returning the next point in the specified direction, the extracted 
@@ -344,7 +378,13 @@ def traverse_line(point: Point, offset: int, img: np.ndarray, line: Line, direct
         when choosing the next point, based on the line slope and direction.
         - No manual axis or index selection is required.
     """
-    img_piece, *global_origin = find_point_neighbourhood(point, offset, img, line)
+
+    neighbourhood_func = {
+        'simple': find_point_neighbourhood_simple,
+        'complex': find_point_neighbourhood
+    }[neighbourhood_type]
+
+    img_piece, *global_origin = neighbourhood_func(point, offset, img, line)
 
     points_candidates = line.get_points_by_distance(point, offset)
     points = [_clamp_to_img(p, img, line) for p in points_candidates]
@@ -364,28 +404,28 @@ def traverse_line(point: Point, offset: int, img: np.ndarray, line: Line, direct
     return new_point, img_piece, global_origin
 
 
-def find_net_lines(img_piece: np.ndarray, bin_thresh: float = 0.8, hough_line_thresh: int = 15, min_line_len: int | None = 5 , min_line_gap: int = 5) -> list[LineGroup]:
+def find_net_lines(img_piece: np.ndarray, cannys_thresh_lower: int = 50, cannys_thresh_upper: int = 150, hough_thresh: int = 10, min_line_len: int = 10, max_line_gap:int = 10):
     piece_gray = cv2.cvtColor(img_piece, cv2.COLOR_RGB2GRAY)
-    neg_img = 255 - piece_gray
-    neg_bin_img = (neg_img > neg_img.max() * bin_thresh).astype(np.uint8)
+    neg_gray_img = 255 - piece_gray
+    edges = cv2.Canny(neg_gray_img, cannys_thresh_lower, cannys_thresh_upper)
 
-    # plt.imshow(img_piece)
+    # plt.imshow(neg_gray_img)
     # plt.show()
 
-    # plt.imshow(neg_bin_img)
+    # plt.imshow(edges)
     # plt.show()
 
-    lines = cv2.HoughLinesP(neg_bin_img, 1, np.pi/180, threshold=hough_line_thresh, minLineLength=min_line_len, maxLineGap=min_line_gap)
+    lines = cv2.HoughLinesP(edges, 1, np.pi/180, threshold=hough_thresh, minLineLength=min_line_len, maxLineGap=max_line_gap)
     if lines is None:
         lines = []
-            
+    
     img_copy = img_piece.copy()
     for line in lines:
         x1, y1, x2, y2 = line[0]
         cv2.line(img_copy, (x1, y1), (x2, y2), (0, 255, 0), 2)
 
     # plt.imshow(img_copy)
-    # plt.show()  
+    # plt.show()
 
     line_obj = [Line.from_hough_line(line[0]) for line in lines]
     line_obj = [line for line in line_obj if line.slope is not None] 
@@ -393,8 +433,7 @@ def find_net_lines(img_piece: np.ndarray, bin_thresh: float = 0.8, hough_line_th
 
 
 def check_items_sign(line_groups: list[LineGroup]) -> bool:
-    return all(item.slope >= 0 for item in line_groups) or all(item.slope < 0 for item in line_groups)
-
+    return all(item.slope > 0 for item in line_groups) or all(item.slope < 0 for item in line_groups)
 
 
 def transform_point(point: Intersection | Point, original_x_start: int, original_y_start: int, to_global: bool = True) -> Point:
@@ -444,7 +483,7 @@ def _count_array_sequence_group(arr: np.ndarray) -> int:
     return counter
 
 
-def is_court_corner(img: np.ndarray, bin_thresh: float = 0.8) -> bool:
+def is_court_corner(img: np.ndarray, intersect_point: Point, original_range: tuple[int, int], bin_thresh: float = 0.8, x_range: int = 3, y_range: int = 3) -> bool:
 
     gray = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
     bin_img = (gray > gray.max() * bin_thresh).astype(np.uint8)
@@ -461,18 +500,24 @@ def is_court_corner(img: np.ndarray, bin_thresh: float = 0.8) -> bool:
     # plt.imshow(bin_img)
     # plt.show()
 
-    plt.imshow(closed_bin_img)
-    plt.show()
+    local_intersect_point = transform_point(intersect_point, *original_range, False)
+    if np.sum(closed_bin_img[local_intersect_point.y - y_range: local_intersect_point.y + y_range, local_intersect_point.x - x_range: local_intersect_point.x + x_range]) == 0:
+        return False
+    
+    # cv2.circle(img, local_intersect_point, 2, (0, 255, 0))
+    # plt.imshow(img)
+    # plt.show()
+
 
     ones_iloc = np.argwhere(closed_bin_img > 0)
     x_range = np.unique(ones_iloc[:,1])
     y_range = np.unique(ones_iloc[:,0])
 
     if len(x_range) == 0 or len(x_range) == closed_bin_img.shape[1] and len(y_range) == closed_bin_img.shape[0]:
+        # print('uniques')
         return False
 
     if not np.all(np.diff(x_range)==1):
-        # print('sekwencja')
         return False
     
     row_start, row_stop = ones_iloc[:,0].min(), ones_iloc[:,0].max()
@@ -486,11 +531,12 @@ def is_court_corner(img: np.ndarray, bin_thresh: float = 0.8) -> bool:
         if not seq_groups or seq_groups[-1] != seq_num:
             seq_groups.append(seq_num)
 
-    print('-->'.join(map(str, seq_groups)))
+    # print('-->'.join(map(str, seq_groups)))
 
-    if seq_groups != [1, 2, 1]:
+    if seq_groups != [1, 2, 1] and seq_groups != [2, 1]:
         return False
     
+    # print('return true')
     return True
 
 
@@ -514,13 +560,13 @@ def angle_between_lines(line1: Line, line2: Line) -> float | None:
     return np.degrees(np.arctan(tan_theta))
 
 
-def is_inner_sideline(img: np.ndarray, bin_thresh: float = 0.8, hough_line_thresh: int = 15, min_line_len: int | None = 5 , min_line_gap: int = 5) -> bool:
+def is_inner_sideline(img: np.ndarray, bin_thresh: float = 0.8, hough_line_thresh: int = 8, min_line_len: int | None = 5 , min_line_gap: int = 5) -> bool:
 
     gray = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
     bin_img = (gray > gray.max() * bin_thresh).astype(np.uint8)
 
     kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (9, 9))
-    closed_bin_img = cv2.morphologyEx(bin_img, cv2.MORPH_CLOSE, kernel)
+    # closed_bin_img = cv2.morphologyEx(bin_img, cv2.MORPH_CLOSE, kernel)
 
     skel = skeletonize(bin_img).astype(np.uint8)
 
@@ -561,6 +607,225 @@ def is_inner_sideline(img: np.ndarray, bin_thresh: float = 0.8, hough_line_thres
     return angle is not None and angle < 90
 
 
-# https://stackoverflow.com/a/33098888
-# https://scikit-image.org/
-# https://scikit-image.org/docs/0.25.x/auto_examples/edges/plot_skeleton.html
+def transform_annotation(img: np.ndarray, annotation: dict[Literal['x', 'y'], float]) -> Point:
+    height, width = img.shape[:2]
+    x = annotation['x'] / 100 * width
+    y = annotation['y'] / 100 * height
+    return Point(x, y)
+
+
+def fill_edges_image(edges_img: np.ndarray):
+    h, w = edges_img.shape
+    filled = np.zeros_like(edges_img)
+
+    for x in range(w):
+        ys = np.flatnonzero(edges_img[:, x])
+        if ys.size >= 2:
+            y1, y2 = ys.min(), ys.max()
+            filled[y1:y2 + 1, x] = 1 
+
+    kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (5, 5))
+    return cv2.morphologyEx(filled, cv2.MORPH_CLOSE, kernel, iterations=1)
+
+
+def _select_intersection_by_x(intersections: list[Intersection], local_line: Line) -> Intersection | None:
+    """Pick intersection by x: min x if local line slope > 0, else max x."""
+    if not intersections:
+        return None
+
+    def x_of(inter: Intersection):
+        p = inter.point
+        return p.x if hasattr(p, "x") else p[0]
+
+    intersections.sort(key=x_of)
+
+    slope = getattr(local_line, "slope", None)
+    if slope is None:
+        return intersections[len(intersections) // 2]
+
+    return intersections[0] if slope > 0 else intersections[-1]
+
+
+def get_further_outer_baseline_corner(img: np.ndarray, local_line: Line, cannys_thresh_lower: int, cannys_thresh_upper: int, hough_thresh: int = 10, min_line_len: int = 10, max_line_gap: int = 10) -> Intersection:
+
+    img_piece_gray = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
+    edges = cv2.Canny(img_piece_gray, cannys_thresh_lower, cannys_thresh_upper)
+    filled_edges = fill_edges_image(edges)
+
+    # plt.imshow(edges)
+    # plt.show()
+
+    # plt.imshow(filled_edges)
+    # plt.show()
+
+    lines = cv2.HoughLinesP(edges, 1, np.pi/180, threshold=hough_thresh, minLineLength=min_line_len, maxLineGap=max_line_gap)
+    if lines is None:
+        lines = []
+
+    line_obj = [Line.from_hough_line(line[0]) for line in lines]
+    line_obj = [line for line in line_obj if line.slope is not None] 
+    grouped_lines = group_lines(line_obj)
+
+    img_copy = img.copy()
+    for line in grouped_lines:
+        pts = line.limit_to_img(img_copy)
+        cv2.line(img_copy, *pts, (0, 255, 0), 1)
+
+    # plt.imshow(img_copy)
+    # plt.show()
+
+    if check_items_sign(grouped_lines):
+        return None
+    
+    intersections = []
+    for line_outer in grouped_lines:
+        for line_inner in grouped_lines:
+
+            if line_outer is line_inner:
+                continue
+
+            if np.sign(line_outer.slope) == np.sign(line_inner.slope):
+                continue
+
+            if angle_between_lines(line_outer, line_inner) >= 90:
+                continue
+
+            intersection = line_outer.intersection(line_inner, img)
+            if intersection is None:
+                continue
+
+            col_start = intersection.point.x
+            if local_line.slope > 0:
+                col_range = range(0, col_start)
+            else:
+                col_range = range(col_start, edges.shape[1])
+
+            skip_line = False
+    
+            # sums = []
+            # for col in col_range:
+            #     sums.append(np.sum(edges[:, col]))
+            
+            # print(sums)
+            # if all(sums):
+            #     skip_line = True
+
+            sequence = []
+            analyze_line = intersection.line1 if np.sign(intersection.line1.slope) == np.sign(local_line.slope) else intersection.line2
+            for col in col_range:
+                row = analyze_line.y_for_x(col)
+                if row >= 0:
+                    # print(f'{row=} {col=} {filled_edges[row, col]}')
+                    seq_num = int(filled_edges[row, col])
+
+                    if not sequence or sequence[-1] != seq_num:
+                        sequence.append(seq_num)
+                        sequence.append(seq_num)
+
+            # print(sequence)
+            # print('cond 1', all(x == 0 for x in sequence))
+            # print('cond 2', local_line.slope > 0 and sequence[0] == 0 and sequence[-1] == 1)
+            # print('cond 3', local_line.slope < 0 and sequence[0] == 1 and sequence[-1] == 0)
+
+            if not (all(x == 0 for x in sequence) or (local_line.slope > 0 and sequence[0] == 0 and sequence[-1] == 1) or (local_line.slope < 0 and sequence[0] == 1 and sequence[-1] == 0)):
+                skip_line = True
+
+            if skip_line:
+                continue
+
+            if intersection not in intersections:
+                intersections.append(intersection)
+
+    return _select_intersection_by_x(intersections, local_line) # intersections[0] if len(intersections) > 0 else intersections
+
+
+def get_closest_line(lines, point):
+    """Find the line closest to a point."""
+    x, y = point
+    min_dist = float('inf')
+    closest = None
+    
+    for line in lines:
+        if line.xv is not None:
+            # Vertical line
+            dist = abs(x - line.xv)
+        else:
+            # Regular line: y = mx + b -> mx - y + b = 0
+            dist = abs(line.slope * x - y + line.intercept) / np.sqrt(line.slope**2 + 1)
+        
+        if dist < min_dist:
+            min_dist = dist
+            closest = line
+    
+    return closest
+
+
+def find_point_neighbourhood_simple(point: Point, size: int, img: np.ndarray, 
+                                   local_line: Line) -> tuple[np.ndarray, int, int]:
+    """
+    Extract a rectangular neighborhood around a given point, positioning the point
+    based on the local line's slope.
+    
+    Args:
+        point (Point): The central point from which the neighborhood is calculated.
+        size (int): Half-size of the neighborhood (creates size*2 x size*2 window).
+        img (np.ndarray): The source image array.
+        local_line (Line): Line used to determine point positioning within the window.
+                          - Positive slope: point positioned near left boundary
+                          - Negative slope: point positioned near right boundary
+    
+    Returns:
+        tuple[np.ndarray, int, int]: 
+            - The extracted sub-image as a numpy array
+            - The x-coordinate of the top-left corner (global coordinates)
+            - The y-coordinate of the top-left corner (global coordinates)
+    """
+    height, width = img.shape[0], img.shape[1]
+    
+    center_x = int(point.x)
+    center_y = int(point.y)
+    
+    if local_line.slope is not None:
+        if local_line.slope > 0:
+            x_start = max(0, center_x - size // 4)
+            x_end = min(width - 1, x_start + 2 * size)
+        else:
+            x_end = min(width - 1, center_x + size // 4)
+            x_start = max(0, x_end - 2 * size)
+    else:
+        x_start = max(0, center_x - size)
+        x_end = min(width - 1, center_x + size)
+    
+    y_start = max(0, center_y - size)
+    y_end = min(height - 1, center_y + size)
+    
+    if x_start < 0:
+        x_end = min(width - 1, x_end - x_start)
+        x_start = 0
+    if x_end >= width:
+        x_start = max(0, x_start - (x_end - width + 1))
+        x_end = width - 1
+        
+    if y_start < 0:
+        y_end = min(height - 1, y_end - y_start)
+        y_start = 0
+    if y_end >= height:
+        y_start = max(0, y_start - (y_end - height + 1))
+        y_end = height - 1
+    
+    return img[y_start:y_end+1, x_start:x_end+1], x_start, y_start
+
+
+def find_point_neighbourhood_simple_no_line(point: Point, size: int, img: np.ndarray) -> tuple[np.ndarray, int, int]:
+
+    height, width = img.shape[0], img.shape[1]
+    
+    point = point.as_int()
+
+    x_start = max(point.x - size, 0)
+    y_start = max(point.y - size, 0)
+
+    x_end = min(point.x + size, width - 1)
+    y_end = min(point.y + size, height - 1)
+    
+    return img[y_start:y_end+1, x_start:x_end+1], x_start, y_start
