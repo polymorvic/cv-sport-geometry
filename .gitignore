@@ -14,3 +14,4 @@ tests/
 *.jpg
 *.csv
 *.png
+*.DS_Store
