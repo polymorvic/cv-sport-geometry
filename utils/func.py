@@ -829,3 +829,34 @@ def find_point_neighbourhood_simple_no_line(point: Point, size: int, img: np.nda
     y_end = min(point.y + size, height - 1)
     
     return img[y_start:y_end+1, x_start:x_end+1], x_start, y_start
+
+
+def crop_court_field(image: np.ndarray, baseline: Line, closer_outer_baseline_point: Point, closer_outer_netline_point: Point, further_outer_baseline_point: Point, further_outer_netline_point: Point,) -> np.ndarray:
+    
+    x_start, x_end, y_start, y_end = {
+        True: (
+            further_outer_netline_point.x,
+            closer_outer_netline_point.x + 1,
+            further_outer_netline_point.y,
+            closer_outer_baseline_point.y + 1,
+        ),
+        False: (
+            closer_outer_netline_point.x,
+            further_outer_baseline_point.x + 1,
+            further_outer_netline_point.y,
+            closer_outer_baseline_point.y + 1,
+        ),
+    }[baseline.slope > 0]
+
+    return image[y_start:y_end, x_start:x_end], x_start, y_start
+
+
+def image_to_lines(image: np.ndarray, bin_thresh: float, cannys_lower_thresh: int, cannys_upper_thresh: int, hough_thresh: int, min_line_len: float, hough_max_line_gap: int, baseline: Line) -> list[LineGroup]:
+    img_gray = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
+    bin_img = (img_gray > img_gray.max() * bin_thresh).astype(np.uint8) * 255
+    edges = cv2.Canny(bin_img, cannys_lower_thresh, cannys_upper_thresh)
+    lines = cv2.HoughLinesP(edges, 1, np.pi/180, threshold=hough_thresh, minLineLength=min_line_len, maxLineGap=hough_max_line_gap)
+    lines = [] if lines is None else lines
+    line_obj = [Line.from_hough_line(line[0]) for line in lines]
+    line_obj = [line for line in line_obj if line.slope is not None and np.sign(line.slope) != np.sign(baseline.slope)]
+    return group_lines(line_obj)
