@@ -4,7 +4,7 @@ from .lines import Line, Intersection, Point
 from .func import (traverse_line, find_net_lines, check_items_sign, transform_intersection, transform_line,
                    is_court_corner, find_point_neighbourhood, is_inner_sideline, transform_point, group_lines, 
                    get_further_outer_baseline_corner, get_closest_line, find_point_neighbourhood_simple,
-                   find_point_neighbourhood_simple_no_line)
+                   crop_court_field, image_to_lines)
 
 import matplotlib.pyplot as plt
 import cv2
@@ -532,61 +532,134 @@ class CourtFinder:
         return closer_inner_endline_point, further_inner_endline_point
     
 
-    # def traverse_sideline(self, 
-    #                       start_point: Point, 
-    #                       netline: Line,
-    #                       bin_thresh: float,
-    #                       cannys_lower_thresh: int,
-    #                       cannys_lower_upper: int,
-    #                       hough_max_line_gap: int,
-    #                       hough_thresh:int ):
+
+    # def find_service_points(self, 
+    #                         inner_baseline_point: Point,
+    #                         inner_netline_point: Point,
+    #                         inner_sideline: Line,
+    #                         opposite_inner_sideline: Line,
+    #                         offset: int,
+    #                         bin_thresh: float,
+    #                         cannys_lower_thresh: int,
+    #                         cannys_lower_upper: int,
+    #                         hough_max_line_gap: int,
+    #                         hough_thresh:int,
+    #                         warmup: int = 5):
         
-    #     new_point = start_point
+
+    #     i = 0
+    #     new_point = inner_baseline_point
     #     while True:
-    #         img_piece, *original_range = find_point_neighbourhood_simple_no_line(new_point, self.corner_offset, self.img)
-        
-    #         plt.imshow(img_piece)
-    #         plt.show()
+    #         i += 1
+    #         new_point, img_piece, (origin_x, origin_y) = traverse_line(new_point, self.corner_offset, self.img, inner_sideline, neighbourhood_type='simple')
+
+    #         if i <= warmup:
+    #             continue
 
     #         img_gray = cv2.cvtColor(img_piece, cv2.COLOR_RGB2GRAY)
     #         bin_img = (img_gray > img_gray.max() * bin_thresh).astype(np.uint8) * 255
-
-    #         plt.imshow(bin_img)
-    #         plt.show()
-
     #         edges = cv2.Canny(bin_img, cannys_lower_thresh, cannys_lower_upper)
-
-    #         plt.imshow(edges)
-    #         plt.show()
-
-    #         lines = cv2.HoughLinesP(edges, 1, np.pi/180, threshold=hough_thresh, minLineLength=self.corner_offset*0.2, maxLineGap=hough_max_line_gap)
+    #         lines = cv2.HoughLinesP(edges, 1, np.pi/180, threshold=hough_thresh, minLineLength=self.corner_offset*0.5, maxLineGap=hough_max_line_gap)
     #         lines = [] if lines is None else lines
     #         line_obj = [Line.from_hough_line(line[0]) for line in lines]
-    #         line_obj = [line for line in line_obj if line.slope is not None and np.sign(line.slope) != np.sign(netline.slope)]
+    #         line_obj = [line for line in line_obj if line.slope is not None and np.sign(line.slope) != np.sign(inner_sideline.slope)]
+    #         grouped_lines = group_lines(line_obj)
 
-    #         print(line_obj)
-    #         for line in line_obj:
-    #             if line.check_point_on_line(new_point, 1):
-    #                 break
-
-    #         pts = line.limit_to_img(img_piece)
-    #         new_point = transform_point(sorted(pts, key = lambda point: point.y)[0], *original_range)
-
-    #         local_netline = transform_line(netline, self.img, *original_range, to_global=False)
-    #         print(local_netline)
-
-    #         try:
-    #             pts2 = local_netline.limit_to_img(img_piece)
-    #         except ValueError:
-    #             continue
-
+    #         local_inner_sideline = transform_line(inner_sideline, self.img, origin_x, origin_y, to_global=False)
     #         piece_copy = img_piece.copy()
-    #         cv2.line(piece_copy, *pts, (255,0,0))
-    #         cv2.line(piece_copy, *pts2, (255,255,0))
+    #         for line in grouped_lines:
+    #             pts = line.limit_to_img(img_piece)
+    #             try:
+    #                 pts_inner = local_inner_sideline.limit_to_img(img_piece)
+    #                 cv2.line(piece_copy, *pts_inner, (255, 0, 0))
+    #             except ValueError:
+    #                 pass
+
+    #             cv2.line(piece_copy, *pts, (255, 0, 0))
+
     #         plt.imshow(piece_copy)
     #         plt.show()
 
-    #         if (intersect_point := local_netline.intersection(line, img_piece)) is not None:
-    #             global_intersect_point = transform_point(intersect_point, *original_range)
-    #             return global_intersect_point
+
+    def find_service_points(self, 
+                            closer_outer_baseline_point: Point,
+                            closer_outer_netline_point: Point,
+                            further_outer_baseline_point: Point,
+                            further_outer_netline_point: Point,
+
+                            closer_inner_baseline_point: Point,
+                            further_inner_baseline_point: Point,
+
+                            closer_inner_netline_point: Point,
+                            further_inner_netline_point: Point,
+
+                            baseline: Line,
+                            netline: Line,
+                            bin_thresh: float,
+                            cannys_lower_thresh: int,
+                            cannys_upper_thresh: int,
+                            hough_max_line_gap: int,
+                            min_line_len_ratio: float,
+                            hough_thresh: int = 100,
+                            margin: int = 10
+                            ):
+        
+
+        img_piece, *origin = crop_court_field(self.img, baseline, closer_outer_baseline_point, closer_outer_netline_point, further_outer_baseline_point, further_outer_netline_point)
+        grouped_lines = image_to_lines(img_piece, bin_thresh, cannys_lower_thresh, cannys_upper_thresh, hough_thresh, self.corner_offset * min_line_len_ratio, hough_max_line_gap, baseline)
+
+        global_grouped_lines = [transform_line(line, self.img, *origin) for line in grouped_lines]
+        global_grouped_lines = [line for line in global_grouped_lines if not (line.check_point_on_line(closer_outer_baseline_point, 30) or 
+                                line.check_point_on_line(closer_outer_netline_point, 30) or
+                                line.check_point_on_line(further_outer_baseline_point, 30) or
+                                line.check_point_on_line(further_outer_netline_point, 30) or
+                                line.check_point_on_line(closer_inner_baseline_point, 30) or 
+                                line.check_point_on_line(further_inner_baseline_point, 30) or 
+                                line.check_point_on_line(closer_inner_netline_point, 30) or
+                                line.check_point_on_line(further_inner_netline_point, 30))]
+
+        # img_copy = self.img.copy()
+        # for line in global_grouped_lines:
+        #     print(line)
+        #     pts = line.limit_to_img(img_copy)
+        #     cv2.line(img_copy, *pts, (255,0,0))
+
+        # plt.imshow(img_copy)
+        # plt.show()
+
+        for line in global_grouped_lines:
+
+            print(line)
+
+            if (net_inter := line.intersection(netline, self.img)) is not None and (base_inter := line.intersection(baseline, self.img)) is not None:
+                
+                slope_positive = baseline.slope > 0
+                
+                netline_condition = (
+                    (slope_positive and further_inner_netline_point.x + margin < net_inter.point.x < closer_inner_netline_point.x - margin) or
+                    (not slope_positive and closer_inner_netline_point.x + margin < net_inter.point.x < further_inner_netline_point.x - margin)
+                )
+
+                baseline_condition = (
+                    (slope_positive and further_inner_baseline_point.x + margin < base_inter.point.x < closer_inner_baseline_point.x - margin) or
+                    (not slope_positive and closer_inner_baseline_point.x + margin < base_inter.point.x < further_inner_baseline_point.x - margin)
+                )
+
+                # print(f'{net_inter.point=} {base_inter.point=}')
+                # print(f'{further_inner_netline_point.x=} {net_inter.point.x=} {closer_inner_netline_point.x=}')
+                # print(f'{further_inner_baseline_point.x=} {base_inter.point.x=} {closer_inner_baseline_point.x=}')
+            
+                # piece_copy = img_piece.copy()
+
+                # cv2.circle(piece_copy, net_inter.point, 2, (255, 0, 0))
+                # cv2.circle(piece_copy, base_inter.point, 2, (0, 0, 255))
+
+                # plt.imshow(piece_copy)
+                # plt.show()
+
+                if netline_condition and baseline_condition:
+
+                    return net_inter.point, line
+
+        
 
