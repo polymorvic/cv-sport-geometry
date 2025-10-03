@@ -77,7 +77,6 @@ for i, (data, train_pic) in enumerate(zip(config['data'], train_pics)):
 
 
         # inner points
-
         closer_inner_baseline_point, further_inner_baseline_point = candidates.scan_endline(baseline,
                                                                                             netline, 
                                                                                             closer_outer_baseline_point, 
@@ -105,6 +104,25 @@ for i, (data, train_pic) in enumerate(zip(config['data'], train_pics)):
                                                                                 searching_line = 'net',
                                                                                 )
         
+        # net_service_point and centre_service_line
+        net_service_point, centre_service_line = candidates.find_net_service_point_centre_service_line(closer_outer_baseline_point, 
+                                                                                closer_outer_netpoint, 
+                                                                                further_outer_baseline_point,
+                                                                                further_outer_netpoint, 
+                                                                                closer_inner_baseline_point,
+                                                                                further_inner_baseline_point,
+                                                                                closer_inner_netpoint,
+                                                                                further_inner_netpoint,
+                                                                                baseline, 
+                                                                                netline,
+                                                                                data['bin_thresh_centre_service_line'],
+                                                                                data['canny_thresh']['lower'],
+                                                                                data['canny_thresh']['upper'],
+                                                                                data['max_line_gap_centre_service_line'],
+                                                                                data['min_line_len_ratio'],
+                                                                                data['hough_thresh'],
+                                                                                )
+        
 
         gt_closer_inner_baseline_point = transform_annotation(train_pic, data['closer_inner_baseline_point'])
         closer_inner_baseline_point_dist = gt_closer_inner_baseline_point.distance(closer_inner_baseline_point)
@@ -128,6 +146,7 @@ for i, (data, train_pic) in enumerate(zip(config['data'], train_pics)):
         pts4 = further_doubles_sideline.limit_to_img(pic)
         pts5 = closer_singles_sideline.limit_to_img(pic)
         pts6 = further_singles_sideline.limit_to_img(pic)
+        pts7 = centre_service_line.limit_to_img(pic)
 
         cv2.line(pic, *pts1, (0, 0, 255))
         cv2.line(pic, *pts2, (0, 0, 255))
@@ -135,6 +154,8 @@ for i, (data, train_pic) in enumerate(zip(config['data'], train_pics)):
         cv2.line(pic, *pts4, (0, 0, 255))
         cv2.line(pic, *pts5, (0, 0, 255))
         cv2.line(pic, *pts6, (0, 0, 255))
+        cv2.line(pic, *pts7, (0, 0, 255))
+        
         cv2.circle(pic, closer_outer_netpoint, 1, (255, 0,0), 3, -1)
         cv2.circle(pic, closer_outer_baseline_point, 1, (0,255,0), 3, -1)
         cv2.circle(pic, further_outer_baseline_point, 1, (0,0,255), 3, -1)
@@ -144,6 +165,8 @@ for i, (data, train_pic) in enumerate(zip(config['data'], train_pics)):
         cv2.circle(pic, closer_inner_netpoint, 1, (255,0,0), 3, -1)
         cv2.circle(pic, further_inner_baseline_point, 1, (255,0,0), 3, -1)
         cv2.circle(pic, further_inner_netpoint, 1, (255,0,0), 3, -1)
+
+        cv2.circle(pic, net_service_point, 1, (255,0,0), 3, -1)
 
         # for inter in intersections:
         #     cv2.circle(pic, inter.point, 1, (0, 0, 0))
