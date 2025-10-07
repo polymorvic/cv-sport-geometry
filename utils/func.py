@@ -851,12 +851,23 @@ def crop_court_field(image: np.ndarray, baseline: Line, closer_outer_baseline_po
     return image[y_start:y_end, x_start:x_end], x_start, y_start
 
 
-def image_to_lines(image: np.ndarray, bin_thresh: float, cannys_lower_thresh: int, cannys_upper_thresh: int, hough_thresh: int, min_line_len: float, hough_max_line_gap: int, baseline: Line) -> list[LineGroup]:
+def image_to_lines(image: np.ndarray, bin_thresh: float, cannys_lower_thresh: int, cannys_upper_thresh: int, hough_thresh: int, min_line_len: float, hough_max_line_gap: int, reference_line: Line, same_slope_sign: bool = False) -> list[LineGroup]:
     img_gray = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
     bin_img = (img_gray > img_gray.max() * bin_thresh).astype(np.uint8) * 255
     edges = cv2.Canny(bin_img, cannys_lower_thresh, cannys_upper_thresh)
+
+    # plt.imshow(edges)
+    # plt.show()
+
     lines = cv2.HoughLinesP(edges, 1, np.pi/180, threshold=hough_thresh, minLineLength=min_line_len, maxLineGap=hough_max_line_gap)
     lines = [] if lines is None else lines
-    line_obj = [Line.from_hough_line(line[0]) for line in lines]
-    line_obj = [line for line in line_obj if line.slope is not None and np.sign(line.slope) != np.sign(baseline.slope)]
+    
+    # line_obj = [Line.from_hough_line(line[0]) for line in lines]
+    # line_obj = [line for line in line_obj if line.slope is not None and np.sign(line.slope) != np.sign(reference_line.slope)]
+    
+    ref_sign = np.sign(reference_line.slope)
+    cmp = (lambda a, b: a == b) if same_slope_sign else (lambda a, b: a != b)
+
+    line_obj = [line for line in (Line.from_hough_line(l[0]) for l in lines) if line.slope is not None and cmp(np.sign(line.slope), ref_sign)]
+
     return group_lines(line_obj)

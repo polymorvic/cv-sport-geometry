@@ -581,7 +581,7 @@ class CourtFinder:
     #         plt.show()
 
 
-    def find_service_points(self, 
+    def find_net_service_point_centre_service_line(self, 
                             closer_outer_baseline_point: Point,
                             closer_outer_netline_point: Point,
                             further_outer_baseline_point: Point,
@@ -601,12 +601,13 @@ class CourtFinder:
                             hough_max_line_gap: int,
                             min_line_len_ratio: float,
                             hough_thresh: int = 100,
-                            margin: int = 10
+                            margin: int = 10,
+                            same_slope_sign: bool = False
                             ):
         
 
         img_piece, *origin = crop_court_field(self.img, baseline, closer_outer_baseline_point, closer_outer_netline_point, further_outer_baseline_point, further_outer_netline_point)
-        grouped_lines = image_to_lines(img_piece, bin_thresh, cannys_lower_thresh, cannys_upper_thresh, hough_thresh, self.corner_offset * min_line_len_ratio, hough_max_line_gap, baseline)
+        grouped_lines = image_to_lines(img_piece, bin_thresh, cannys_lower_thresh, cannys_upper_thresh, hough_thresh, self.corner_offset * min_line_len_ratio, hough_max_line_gap, baseline, same_slope_sign)
 
         global_grouped_lines = [transform_line(line, self.img, *origin) for line in grouped_lines]
         global_grouped_lines = [line for line in global_grouped_lines if not (line.check_point_on_line(closer_outer_baseline_point, 30) or 
@@ -629,7 +630,7 @@ class CourtFinder:
 
         for line in global_grouped_lines:
 
-            print(line)
+            # print(line)
 
             if (net_inter := line.intersection(netline, self.img)) is not None and (base_inter := line.intersection(baseline, self.img)) is not None:
                 
@@ -660,6 +661,103 @@ class CourtFinder:
                 if netline_condition and baseline_condition:
 
                     return net_inter.point, line
+                
+
+    def find_center(self,
+                    closer_outer_baseline_point: Point,
+                    closer_outer_netline_point: Point,
+                    further_outer_baseline_point: Point,
+                    further_outer_netline_point: Point,
+
+                    closer_inner_baseline_point: Point,
+                    further_inner_baseline_point: Point,
+
+                    closer_inner_netline_point: Point,
+                    further_inner_netline_point: Point,
+
+                    baseline: Line,
+
+                    closer_inner_sideline: Line,
+                    further_inner_sideline: Line,
+
+                    centre_service_line: Line,
+
+                    bin_thresh: float,
+                    cannys_lower_thresh: int,
+                    cannys_upper_thresh: int,
+                    hough_max_line_gap: int,
+                    min_line_len_ratio: float,
+                    hough_thresh: int = 100,
+                    margin: int = 10
+                    ):
+        
+        img_piece, *origin = crop_court_field(self.img, baseline, closer_outer_baseline_point, closer_outer_netline_point, further_outer_baseline_point, further_outer_netline_point)
+        grouped_lines = image_to_lines(img_piece, bin_thresh, cannys_lower_thresh, cannys_upper_thresh, hough_thresh, self.corner_offset * min_line_len_ratio, hough_max_line_gap, closer_inner_sideline)
+        
+
+        global_grouped_lines = [transform_line(line, self.img, *origin) for line in grouped_lines]
+        global_grouped_lines = [line for line in global_grouped_lines if not (line.check_point_on_line(closer_outer_baseline_point, 30) or 
+                                                                              line.check_point_on_line(closer_outer_netline_point, 30) or
+                                                                              line.check_point_on_line(further_outer_baseline_point, 30) or
+                        line.check_point_on_line(further_outer_netline_point, 30) or
+                        line.check_point_on_line(closer_inner_baseline_point, 30) or 
+                        line.check_point_on_line(further_inner_baseline_point, 30) or 
+                        line.check_point_on_line(closer_inner_netline_point, 30) or
+                        line.check_point_on_line(further_inner_netline_point, 30))]
+
+        # img_copy = self.img.copy()
+        # for line in global_grouped_lines:
+        #     print(line)
+        #     pts = line.limit_to_img(img_copy)
+        #     cv2.line(img_copy, *pts, (255,0,0))
+
+        # plt.imshow(img_copy)
+        # plt.show()
+
+
+        for line in global_grouped_lines:
+
+            # print(line)
+
+            if (closer_inter := line.intersection(closer_inner_sideline, self.img)) is not None and (further_inter := line.intersection(further_inner_sideline, self.img)) is not None:
+                
+                slope_positive = closer_inner_sideline.slope > 0
+                
+                closer_line_condition = (
+                    (slope_positive and closer_inner_netline_point.x + margin < closer_inter.point.x < closer_inner_baseline_point.x - margin) or
+                    (not slope_positive and closer_inner_baseline_point.x + margin < closer_inter.point.x < closer_inner_netline_point.x - margin)
+                )
+
+                further_line_condition = (
+                    (slope_positive and further_inner_netline_point.x + margin < further_inter.point.x < further_inner_baseline_point.x - margin) or
+                    (not slope_positive and further_inner_baseline_point.x + margin < further_inter.point.x < further_inner_netline_point.x - margin)
+                )
+
+                # print(f'{closer_inter.point.x=}, {further_inter.point.x=}')
+                # print(f'{closer_inner_netline_point.x=}, {closer_inner_baseline_point.x=}')
+                # print(f'{further_inner_netline_point.x=}, {further_inner_baseline_point.x=}')
+                # print(f'{closer_line_condition=}, {further_line_condition=}')
+
+                
+                if closer_line_condition and further_line_condition:
+
+                    # print('tutaj', line)
+
+                    # img_copy = self.img.copy()
+
+                    # pts = line.limit_to_img(img_copy)
+                    # cv2.line(img_copy, *pts, (255,0,0))
+
+                    # plt.imshow(img_copy)
+                    # plt.show()
+
+                    centre_service_point = line.intersection(centre_service_line, self.img).point
+                    further_service_point = line.intersection(further_inner_sideline, self.img).point
+                    closer_service_point = line.intersection(closer_inner_sideline, self.img).point
+
+                    return centre_service_point, further_service_point, closer_service_point
+                
+
 
         
 
