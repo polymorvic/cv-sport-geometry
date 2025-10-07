@@ -44,11 +44,11 @@ for i, (data, train_pic) in enumerate(zip(config['data'], train_pics)):
     candidates = CourtFinder(intersections, train_pic)
 
     try:
-        # closer_outer_baseline_point, closer_outer_netline_point, closer_doubles_sideline -------
+        # closer_outer_baseline_point, closer_outer_netline_point, closer_outer_sideline -------
         closer_outer_baseline_intersecetion, closer_outer_netintersection, used_line = candidates.find_closer_outer_baseline_point()
         closer_outer_baseline_point = closer_outer_baseline_intersecetion.point
         closer_outer_netline_point = closer_outer_netintersection.point
-        closer_doubles_sideline = Line.from_points(closer_outer_baseline_point, closer_outer_netline_point)
+        closer_outer_sideline = Line.from_points(closer_outer_baseline_point, closer_outer_netline_point)
 
         gt_closer_outer_baseline_point = transform_annotation(train_pic, data['closer_outer_baseline_point'])
         gt_closer_outer_netline_point = transform_annotation(train_pic, data['closer_outer_netline_point'])
@@ -68,9 +68,9 @@ for i, (data, train_pic) in enumerate(zip(config['data'], train_pics)):
         netline = candidates.find_netline(closer_outer_netline_point, baseline, data['max_line_gap'])
 
 
-        # further_doubles_sideline, further_outer_netline_point ---
-        further_doubles_sideline = candidates.find_further_doubles_sideline(further_outer_baseline_point, last_local_line, data['offset'], data['extra_offset'], data['bin_thresh'], data['surface_type'])
-        further_outer_netline_point = further_doubles_sideline.intersection(netline, train_pic).point
+        # further_outer_sideline, further_outer_netline_point ---
+        further_outer_sideline = candidates.find_further_doubles_sideline(further_outer_baseline_point, last_local_line, data['offset'], data['extra_offset'], data['bin_thresh'], data['surface_type'])
+        further_outer_netline_point = further_outer_sideline.intersection(netline, train_pic).point
 
         gt_further_outer_netline_point = transform_annotation(train_pic, data['further_outer_netline_point'])
         further_outer_netline_point_dist = gt_further_outer_netline_point.distance(further_outer_netline_point)
@@ -104,6 +104,9 @@ for i, (data, train_pic) in enumerate(zip(config['data'], train_pics)):
                                                                                 searching_line = 'net',
                                                                                 )
         
+        closer_inner_sideline = Line.from_points(closer_inner_baseline_point, closer_inner_netline_point)
+        further_inner_sideline = Line.from_points(further_inner_baseline_point, further_inner_netline_point)
+        
         # net_service_point and centre_service_line
         net_service_point, centre_service_line = candidates.find_net_service_point_centre_service_line(closer_outer_baseline_point, 
                                                                                 closer_outer_netline_point, 
@@ -123,6 +126,28 @@ for i, (data, train_pic) in enumerate(zip(config['data'], train_pics)):
                                                                                 data['hough_thresh'],
                                                                                 )
         
+        centre_service_point, further_service_point, closer_service_point = candidates.find_center(closer_outer_baseline_point, 
+                                                                                                closer_outer_netline_point, 
+                                                                                                further_outer_baseline_point,
+                                                                                                further_outer_netline_point, 
+                                                                                                closer_inner_baseline_point,
+                                                                                                further_inner_baseline_point,
+                                                                                                closer_inner_netline_point,
+                                                                                                further_inner_netline_point,
+                                                                                                baseline, 
+                                                                                                closer_inner_sideline,
+                                                                                                further_inner_sideline,
+                                                                                                centre_service_line,
+                                                                                                data['bin_thresh_centre_service_line'],
+                                                                                                data['canny_thresh']['lower'],
+                                                                                                data['canny_thresh']['upper'],
+                                                                                                data['max_line_gap_centre_service_line'],
+                                                                                                data['min_line_len_ratio'],
+                                                                                                data['hough_thresh']
+                                                                                                )
+        
+        service_line = Line.from_points(further_service_point, closer_service_point)
+        
 
         gt_closer_inner_baseline_point = transform_annotation(train_pic, data['closer_inner_baseline_point'])
         closer_inner_baseline_point_dist = gt_closer_inner_baseline_point.distance(closer_inner_baseline_point)
@@ -136,17 +161,17 @@ for i, (data, train_pic) in enumerate(zip(config['data'], train_pics)):
         gt_further_inner_netline_point = transform_annotation(train_pic, data['further_inner_netline_point'])
         further_inner_netline_point_dist = gt_further_inner_netline_point.distance(further_inner_netline_point)
 
-        closer_singles_sideline = Line.from_points(closer_inner_baseline_point, closer_inner_netline_point)
-        further_singles_sideline = Line.from_points(further_inner_baseline_point, further_inner_netline_point)
+
 
         pic = train_pic.copy()
-        pts1 = closer_doubles_sideline.limit_to_img(pic)
+        pts1 = closer_outer_sideline.limit_to_img(pic)
         pts2 = baseline.limit_to_img(pic)
         pts3 = netline.limit_to_img(pic)
-        pts4 = further_doubles_sideline.limit_to_img(pic)
-        pts5 = closer_singles_sideline.limit_to_img(pic)
-        pts6 = further_singles_sideline.limit_to_img(pic)
+        pts4 = further_outer_sideline.limit_to_img(pic)
+        pts5 = closer_inner_sideline.limit_to_img(pic)
+        pts6 = further_inner_sideline.limit_to_img(pic)
         pts7 = centre_service_line.limit_to_img(pic)
+        pts8 = service_line.limit_to_img(pic)
 
         cv2.line(pic, *pts1, (0, 0, 255))
         cv2.line(pic, *pts2, (0, 0, 255))
@@ -155,6 +180,7 @@ for i, (data, train_pic) in enumerate(zip(config['data'], train_pics)):
         cv2.line(pic, *pts5, (0, 0, 255))
         cv2.line(pic, *pts6, (0, 0, 255))
         cv2.line(pic, *pts7, (0, 0, 255))
+        cv2.line(pic, *pts8, (0, 0, 255))
         
         cv2.circle(pic, closer_outer_netline_point, 1, (255, 0,0), 3, -1)
         cv2.circle(pic, closer_outer_baseline_point, 1, (0,255,0), 3, -1)
@@ -167,6 +193,10 @@ for i, (data, train_pic) in enumerate(zip(config['data'], train_pics)):
         cv2.circle(pic, further_inner_netline_point, 1, (255,0,0), 3, -1)
 
         cv2.circle(pic, net_service_point, 1, (255,0,0), 3, -1)
+
+        cv2.circle(pic, centre_service_point, 1, (255,0,0), 3, -1)
+        cv2.circle(pic, further_service_point, 1, (255,0,0), 3, -1)
+        cv2.circle(pic, closer_service_point, 1, (255,0,0), 3, -1)
 
         # for inter in intersections:
         #     cv2.circle(pic, inter.point, 1, (0, 0, 0))

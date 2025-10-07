@@ -2,7 +2,7 @@
 
 {
     "testing_pics_dir": "pics/tests",
-    "commit": "20251006-run1",
+    "commit": "20251007-run1",
     "data": [
         {
             "pic_name": "tc1.jpg",
@@ -71,7 +71,7 @@
 
             
             "closer_outer_baseline_point": {"x": 59.74869918762536, "y": 95.84246226438633},
-            "closer_outer_neline_tpoint": {"x": 82.40129162364398, "y": 80.8547953656308},
+            "closer_outer_netline_point": {"x": 82.40129162364398, "y": 80.8547953656308},
             "further_outer_netline_point": {"x": 48.84116209175057, "y": 77.35429638502525},
             "further_outer_baseline_point": {"x": 12.792864530089368, "y": 81.72250185426186},
             "closer_inner_baseline_point": {"x": 48.94268849130036, "y": 92.63612317189595},
