@@ -27,7 +27,13 @@
             "closer_inner_baseline_point": {"x": 65.10273208734333, "y": 84.41632096409384},
             "further_inner_baseline_point": {"x": 97.27253191037258, "y": 63.728598776971225},
             "closer_inner_netline_point": {"x": 23.092577420110896, "y": 60.377360617881436},
-            "further_inner_netline_point": {"x": 50.1070722157299, "y": 57.82339282728478}
+            "further_inner_netline_point": {"x": 50.1070722157299, "y": 57.82339282728478},
+
+
+            "centre_service_point": {"x": 54.07660885962433, "y": 62.12645400412552},
+            "further_service_point": {"x": 66.79385558806933, "y": 59.94075662782402},
+            "closer_service_point": {"x": 33.53970761035473, "y": 65.7933831154827},
+            "net_service_point": {"x": 39.04903736284813, "y": 58.95821250695865}
         },
         {
             "pic_name": "tc2.jpg",
@@ -52,7 +58,12 @@
             "closer_inner_baseline_point": {"x": 47.386072871793566, "y": 86.6497461873803},
             "further_inner_baseline_point": {"x": 86.5449948438269, "y": 73.83099440000277},
             "closer_inner_netline_point": {"x": 14.485910614685327, "y": 70.60612629693057},
-            "further_inner_netline_point": {"x": 44.85150608681582, "y": 67.55931839586849}
+            "further_inner_netline_point": {"x": 44.85150608681582, "y": 67.55931839586849},
+
+            "centre_service_point": {"x": 46.545770290986354, "y": 72.22089661875934},
+            "further_service_point": {"x": 60.846012841397, "y": 70.07972621778997},
+            "closer_service_point": {"x": 25.484739169144678, "y": 75.70281355310622},
+            "net_service_point": {"x": 31.933768390597596, "y": 68.85731592750382}
         },
         {
             "pic_name": "tc3.jpg",
@@ -77,7 +88,12 @@
             "closer_inner_baseline_point": {"x": 48.94268849130036, "y": 92.63612317189595},
             "further_inner_baseline_point": {"x": 15.963903207921668, "y": 82.76251515837694},
             "closer_inner_netline_point": {"x": 76.56636322095169, "y": 80.32506883752727},
-            "further_inner_netline_point": {"x": 51.49384723870949, "y": 77.58900490015857}
+            "further_inner_netline_point": {"x": 51.49384723870949, "y": 77.58900490015857},
+
+            "centre_service_point": {"x": 49.95081937799606, "y": 81.47226808276876},
+            "further_service_point": {"x": 37.795784365552954, "y": 79.59242857868678},
+            "closer_service_point": {"x": 66.95279542997307, "y": 84.2279902456107},
+            "net_service_point": {"x": 62.27244572761991, "y": 78.75265291438896}
         },
         {
             "pic_name": "tc4.jpg",
@@ -102,7 +118,12 @@
             "closer_inner_baseline_point": {"x": 49.64463608495574, "y": 92.79894351974592},
             "further_inner_baseline_point": {"x": 10.498666830281172, "y": 68.5312774570556},
             "closer_inner_netline_point": {"x": 76.39132841914335, "y": 55.08179686522442},
-            "further_inner_netline_point": {"x": 48.17867764046734, "y": 47.82807460832657}
+            "further_inner_netline_point": {"x": 48.17867764046734, "y": 47.82807460832657},
+
+            "centre_service_point": {"x": 47.45636816055152, "y": 61.565224006685945},
+            "further_service_point": {"x": 33.151075696896925, "y": 56.369769529836276},
+            "closer_service_point": {"x": 66.24540900833667, "y": 68.75345554314922},
+            "net_service_point": {"x": 60.69410148512742, "y": 50.96080322517085}
         },
         {
             "pic_name": "tc5.jpg",
@@ -127,7 +148,12 @@
             "closer_inner_baseline_point": {"x": 53.84521288162528, "y": 85.37685433247132},
             "further_inner_baseline_point": {"x": 93.52266877676779, "y": 74.28104098185611},
             "closer_inner_netline_point": {"x": 17.3848625017012, "y": 69.36994852628172},
-            "further_inner_netline_point": {"x": 48.593087684130204, "y": 66.85192546755275}
+            "further_inner_netline_point": {"x": 48.593087684130204, "y": 66.85192546755275},
+
+            "centre_service_point": {"x": 51.38853289457784, "y": 72.01237544031147},
+            "further_service_point": {"x": 66.39441269102885, "y": 69.8775724865677},
+            "closer_service_point": {"x": 30.429620241367832, "y": 74.7549895448094},
+            "net_service_point": {"x": 35.20850362166526, "y": 67.99311589588342}
         },
         {
             "pic_name": "tc6.webp",
@@ -152,7 +178,12 @@
             "closer_inner_baseline_point": {"x": 85.8643782688496, "y": 89.65898164340021},
             "further_inner_baseline_point": {"x": 97.6858169031681, "y": 70.61866341005106},
             "closer_inner_netline_point": {"x": 29.31549556567902, "y": 67.0394734908577},
-            "further_inner_netline_point": {"x": 52.428174781517626, "y": 61.43885980467299}
+            "further_inner_netline_point": {"x": 52.428174781517626, "y": 61.43885980467299},
+
+            "centre_service_point": {"x": 62.93990936089385, "y": 69.22945888891999},
+            "further_service_point": {"x": 71.5359328262377, "y": 65.42090044964846},
+            "closer_service_point": {"x": 50.09176040913439, "y": 75.0340690403399},
+            "net_service_point": {"x": 42.94880140857289, "y": 63.7460524612941}
         },
         {
             "pic_name": "tc7.jpg",
@@ -177,7 +208,12 @@
             "closer_inner_baseline_point": {"x": 51.83489912315829, "y": 93.45035223606105},
             "further_inner_baseline_point": {"x": 7.12240808040486, "y": 72.894291137337},
             "closer_inner_netline_point": {"x": 78.91364360196717, "y": 35.739062317891666},
-            "further_inner_netline_point": {"x": 43.51263751343637, "y": 28.24074936657655}
+            "further_inner_netline_point": {"x": 43.51263751343637, "y": 28.24074936657655},
+
+            "centre_service_point": {"x": 45.56967950543045, "y": 54.390613092592474},
+            "further_service_point": {"x": 27.550333151370825, "y": 48.61900290700646},
+            "closer_service_point": {"x": 66.59676637873912, "y": 61.21899697413087},
+            "net_service_point": {"x": 59.9309630658088, "y": 32.11707519328871}
         },
         {
             "pic_name": "tc8.jpg",
@@ -202,7 +238,12 @@
             "closer_inner_baseline_point": {"x": 54.25499701431197, "y": 89.11744209971646},
             "further_inner_baseline_point": {"x": 6.871497485000069, "y": 74.3048590741796},
             "closer_inner_netline_point": {"x": 61.90611184033757, "y": 57.18087487906164},
-            "further_inner_netline_point": {"x": 38.67626064246601, "y": 53.77491588992239}
+            "further_inner_netline_point": {"x": 38.67626064246601, "y": 53.77491588992239},
+
+            "centre_service_point": {"x": 42.14114968669371, "y": 64.20954305748984},
+            "further_service_point": {"x": 27.642262085211428, "y": 61.1354625446989},
+            "closer_service_point": {"x": 59.19651621035169, "y": 67.36244614753184},
+            "net_service_point": {"x": 49.66450194338223, "y": 55.30259182812124}
         }
     ]
 }
