@@ -6,7 +6,8 @@ import numpy as np
 from skimage.morphology import skeletonize
 from typing import Literal, Iterable, Optional
 from utils.lines import Line, LineGroup, Point, Intersection
-from utils.const import ARRAY_X_INDEX, ARRAY_Y_INDEX
+from utils.const import (ARRAY_X_INDEX, ARRAY_Y_INDEX, WIDTH, LENGTH, DIST_FROM_BASELINE, 
+                         DIST_OUTER_SIDELINE, COURT_LENGTH_HALF, COURT_WIDTH_HALF)
 import matplotlib.pyplot as plt
 
 
@@ -871,3 +872,92 @@ def image_to_lines(image: np.ndarray, bin_thresh: float, cannys_lower_thresh: in
     line_obj = [line for line in (Line.from_hough_line(l[0]) for l in lines) if line.slope is not None and cmp(np.sign(line.slope), ref_sign)]
 
     return group_lines(line_obj)
+
+
+def create_reference_court(ref_img_height: int = 25_000, ref_img_width: int = 11_000, line_thickness: int = 50) -> tuple[dict[str, Point], np.ndarray]:
+    ref_closer_outer_netline_point = 0, COURT_LENGTH_HALF
+    ref_closer_outer_baseline_point = 0, LENGTH
+    ref_closer_outer_baseline_point_2 = 0, 0
+
+    ref_further_outer_netline_point = WIDTH, COURT_LENGTH_HALF
+    ref_further_outer_baseline_point = WIDTH, LENGTH
+    ref_further_outer_baseline_point_2 = WIDTH, 0
+
+    ref_closer_inner_netline_point = DIST_OUTER_SIDELINE, COURT_LENGTH_HALF
+    ref_closer_inner_baseline_point = DIST_OUTER_SIDELINE, LENGTH
+    ref_closer_inner_baseline_point_2 = DIST_OUTER_SIDELINE, 0
+
+    ref_further_inner_netline_point = WIDTH - DIST_OUTER_SIDELINE, COURT_LENGTH_HALF
+    ref_further_inner_baseline_point = WIDTH - DIST_OUTER_SIDELINE, LENGTH
+    ref_further_inner_baseline_point_2 = WIDTH - DIST_OUTER_SIDELINE, 0
+
+    ref_closer_service_point = DIST_OUTER_SIDELINE, LENGTH - DIST_FROM_BASELINE
+    ref_further_service_point = WIDTH - DIST_OUTER_SIDELINE, LENGTH - DIST_FROM_BASELINE
+
+    ref_closer_service_point_2 = DIST_OUTER_SIDELINE, DIST_FROM_BASELINE
+    ref_further_service_point_2 = WIDTH - DIST_OUTER_SIDELINE, DIST_FROM_BASELINE
+
+    ref_net_service_point = COURT_WIDTH_HALF, COURT_LENGTH_HALF
+    ref_centre_service_point = COURT_WIDTH_HALF, LENGTH - DIST_FROM_BASELINE
+    ref_centre_service_point_2 = COURT_WIDTH_HALF, DIST_FROM_BASELINE
+
+    ref_img = np.zeros((ref_img_height , ref_img_width, 3), np.uint8)
+
+    cv2.line(ref_img, ref_closer_outer_baseline_point, ref_closer_outer_netline_point, (255,0,0), line_thickness)
+    cv2.line(ref_img, ref_closer_outer_netline_point, ref_closer_outer_baseline_point_2, (0,255,0), line_thickness)
+
+
+    cv2.line(ref_img, ref_further_outer_baseline_point, ref_further_outer_netline_point, (255,0,0), line_thickness)
+    cv2.line(ref_img, ref_further_outer_netline_point, ref_further_outer_baseline_point_2, (0,255,0), line_thickness)
+
+    # baselines
+    cv2.line(ref_img, ref_closer_outer_baseline_point, ref_further_outer_baseline_point, (255,0,0), line_thickness)
+    cv2.line(ref_img, ref_closer_outer_baseline_point_2, ref_further_outer_baseline_point_2, (0,255,0), line_thickness)
+
+    # inner sidelines
+    cv2.line(ref_img, ref_closer_inner_baseline_point, ref_closer_inner_netline_point, (255,0,0), line_thickness)
+    cv2.line(ref_img, ref_closer_inner_netline_point, ref_closer_inner_baseline_point_2, (0,255,0), line_thickness)
+
+    cv2.line(ref_img, ref_further_inner_baseline_point, ref_further_inner_netline_point, (255,0,0), line_thickness)
+    cv2.line(ref_img, ref_further_inner_netline_point, ref_further_inner_baseline_point_2, (0,255,0), line_thickness)
+
+    # service lines
+    cv2.line(ref_img, ref_closer_service_point, ref_further_service_point, (255,0,0), line_thickness)
+    cv2.line(ref_img, ref_closer_service_point_2, ref_further_service_point_2, (0,255,0), line_thickness)
+
+    # centre service lines
+    cv2.line(ref_img, ref_net_service_point, ref_centre_service_point, (255,0,0), line_thickness)
+    cv2.line(ref_img, ref_net_service_point, ref_centre_service_point_2, (0,255,0), line_thickness)
+
+    # netline
+    cv2.line(ref_img, ref_closer_outer_netline_point, ref_further_outer_netline_point, (255,0,0), line_thickness)
+
+    return {name: Point.from_iterable(point) for name, point in {
+        'closer_outer_netline_point': ref_closer_outer_netline_point,
+        'closer_outer_baseline_point': ref_closer_outer_baseline_point,
+        'further_outer_netline_point': ref_further_outer_netline_point,
+        'further_outer_baseline_point': ref_further_outer_baseline_point,
+        'closer_inner_netline_point': ref_closer_inner_netline_point,
+        'closer_inner_baseline_point': ref_closer_inner_baseline_point,
+        'further_inner_netline_point': ref_further_inner_netline_point,
+        'further_inner_baseline_point': ref_further_inner_baseline_point,
+        'closer_service_point': ref_closer_service_point,
+        'further_service_point': ref_further_service_point,
+        'net_service_point': ref_net_service_point,
+        'centre_service_point': ref_centre_service_point,
+    }.items()}, ref_img
+
+
+# def warp_points(ref_points: dict[str, Point], dst_points: dict[str, Point], src_image: np.ndarray, *names) -> np.ndarray:
+    
+#     filtered_ref_points = []
+#     filtered_dst_points = []
+#     for name in names:
+#         filtered_ref_points.append(ref_points[name])
+#         filtered_dst_points.append(dst_points[name])
+
+#     ref_points_arr = np.array(filtered_ref_points, dtype=np.float32)
+#     dst_points_arr = np.array(filtered_dst_points, dtype=np.float32)
+
+#     H, _ = cv2.findHomography(ref_points, dst_points)
+#     transformed_img = cv2.warpPerspective(ref_img, H, (train_pic.shape[1], train_pic.shape[0]))
