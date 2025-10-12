@@ -132,6 +132,15 @@ class Point(Generic[T], Hashable):
     
     def as_int(self) -> Point:
         return Point(int(self.x), int(self.y))
+    
+    def to_tuple(self) -> tuple[T, T]:
+        """
+        Convert the Point to a tuple (x, y).
+
+        Returns:
+            tuple[T, T]: A tuple containing the X and Y coordinates.
+        """
+        return (self._x, self._y)
 
     
 class Line(Hashable):
