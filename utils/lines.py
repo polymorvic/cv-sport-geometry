@@ -69,7 +69,7 @@ class Point(Generic[T], Hashable):
         return cls(x, y)
     
     @classmethod
-    def from_iterable(cls, iterable: Union[tuple[T, T], list[T]]) -> 'Point[T]':
+    def from_iterable(cls, iterable: tuple[T, T] | list[T, T]) -> 'Point[T, T]':
         """
         Create a Point from an iterable of exactly two elements.
 
