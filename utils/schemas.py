@@ -1,4 +1,5 @@
 from pydantic import BaseModel, ConfigDict, field_validator
+from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing import Literal
 
 class GroundTruthPoint(BaseModel):
@@ -65,3 +66,8 @@ class TestConfig(BaseModel):
     testing_pics_dir: str
     run_name: str
     data: list[TestImageParams]
+
+
+class Settings(BaseSettings):
+    debug: bool
+    model_config = SettingsConfigDict(env_file=".env")

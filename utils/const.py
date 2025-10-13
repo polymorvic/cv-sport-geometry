@@ -1,3 +1,5 @@
+from .schemas import Settings
+
 ARRAY_X_INDEX = 1
 ARRAY_Y_INDEX = 0
 WIDTH = int(10.973 * 1000)
@@ -6,3 +8,4 @@ DIST_OUTER_SIDELINE = int(1.372 * 1000)
 COURT_LENGTH_HALF = int(LENGTH / 2)
 COURT_WIDTH_HALF = int(WIDTH / 2)
 DIST_FROM_BASELINE = int(5.485 * 1000)
+SETTINGS = Settings()
