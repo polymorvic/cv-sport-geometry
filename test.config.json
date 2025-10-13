@@ -2,7 +2,7 @@
 
 {
     "testing_pics_dir": "pics/tests",
-    "commit": "20251013-run2",
+    "run_name": "20251013-run2",
     "data": [
         {
             "pic_name": "tc1.jpg",
