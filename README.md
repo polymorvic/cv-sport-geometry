@@ -1,8 +1,18 @@
 # CV Sport Geometry
 
-**CV Sport Geometry** is a computer vision project that detects key points and geometric structures of **tennis courts** using **NumPy**, **classical computer vision algorithms and techniques**, and **mathematical concepts** such as **linear algebra**.
+**CV Sport Geometry** is a computer vision project that detects key points and geometric structures of **tennis courts** using **NumPy**, **classical computer vision algorithms and techniques**, and **mathematical concepts** such as **linear algebra** - no neural network applied.
 
-The goal of this project is to accurately identify and extract the main lines, intersections, and reference points on a tennis court from images or video frames, forming the foundation for further analysis such as player tracking, ball trajectory detection, and camera calibration.
+The goal of this project is to accurately identify and extract the main lines, intersections, and reference points on a tennis court from images. Details and assumptions in the next chapter.
+
+Key libraries used:
+<ul> 
+    <li>numpy</li>
+    <li>opencv-python</li>
+    <li>matplotlib</li>
+    <li>pydantic</li>
+    <li>scikit-image</li>
+    <li>label-studio</li>
+</ul>
 
 
 ## Getting Started
