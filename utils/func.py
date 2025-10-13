@@ -4,7 +4,7 @@ import random
 import json
 import colorsys
 import numpy as np
-from pydantic import BaseModel, ValidationError
+from pydantic import BaseModel, ValidationError, TypeAdapter
 from PIL import Image
 from pathlib import Path
 from skimage.morphology import skeletonize
@@ -993,12 +993,23 @@ def load_config(config_filepath: str | Path, data_model: type[BaseModel]) -> Bas
         config_data = json.load(file)
     
     try:
-        return data_model(**config_data)
+        if isinstance(config_data, dict):
+            return data_model(**config_data)
+
+        elif isinstance(config_data, list):
+            adapter = TypeAdapter(list[data_model])
+            return adapter.validate_python(config_data)
+
+        else:
+            raise ValueError(
+                f"Invalid JSON type in {config_path}: expected dict or list, "
+                f"got {type(config_data).__name__}"
+            )
     except ValidationError as e:
         raise ValueError(f"Invalid configuration in {config_path}: {e}") from e
     
 
-def compose_court_data(data: GroundTruthCourtPoints, closer_outer_baseline_point: Point, closer_outer_netline_point: Point, further_outer_baseline_point: Point, further_outer_netline_point: Point,closer_inner_baseline_point: Point, further_inner_baseline_point: Point, closer_inner_netline_point: Point, further_inner_netline_point: Point, net_service_point: Point, centre_service_point: Point, further_service_point: Point, closer_service_point: Point, closer_outer_sideline: Line, baseline: Line, netline: Line, further_outer_sideline: Line, closer_inner_sideline: Line, further_inner_sideline: Line, centre_service_line: Line, service_line: Line) -> tuple[dict[str, Point], dict[str, Line], dict[str, dict[str, int]]]:
+def compose_court_data(closer_outer_baseline_point: Point, closer_outer_netline_point: Point, further_outer_baseline_point: Point, further_outer_netline_point: Point,closer_inner_baseline_point: Point, further_inner_baseline_point: Point, closer_inner_netline_point: Point, further_inner_netline_point: Point, net_service_point: Point, centre_service_point: Point, further_service_point: Point, closer_service_point: Point, closer_outer_sideline: Line, baseline: Line, netline: Line, further_outer_sideline: Line, closer_inner_sideline: Line, further_inner_sideline: Line, centre_service_line: Line, service_line: Line, data: GroundTruthCourtPoints = None) -> tuple[dict[str, Point], dict[str, Line], dict[str, dict[str, int]]]:
     """
     Compose the destination and ground truth court geometry dictionaries.
     ground_truth_points are transformed into {"x": ..., "y": ...} format.
@@ -1033,6 +1044,9 @@ def compose_court_data(data: GroundTruthCourtPoints, closer_outer_baseline_point
         'service_line': service_line
     }
 
+    if data is None:
+        return dst_points, dst_lines
+
 
     ground_truth_points = {
         'closer_outer_baseline_point': data.ground_truth_points.closer_outer_baseline_point,
@@ -1049,7 +1063,6 @@ def compose_court_data(data: GroundTruthCourtPoints, closer_outer_baseline_point
         'closer_service_point': data.ground_truth_points.closer_service_point
     }
 
-    # --- Convert ground truth points to dicts with x, y ---
     ground_truth_points = {k: {"x": v.x, "y": v.y} for k, v in ground_truth_points.items()}
 
     return dst_points, dst_lines, ground_truth_points
