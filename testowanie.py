@@ -87,7 +87,7 @@ for i, (data, train_pic) in enumerate(zip(config.data, train_pics)):
         
         service_line = Line.from_points(further_service_point, closer_service_point)
 
-        dst_points, dst_lines, ground_truth_points = compose_court_data(data, closer_outer_baseline_point, closer_outer_netline_point, further_outer_baseline_point, further_outer_netline_point, closer_inner_baseline_point, further_inner_baseline_point, closer_inner_netline_point, further_inner_netline_point, net_service_point, centre_service_point, further_service_point, closer_service_point, closer_outer_sideline, baseline, netline, further_outer_sideline, closer_inner_sideline, further_inner_sideline, centre_service_line, service_line)
+        dst_points, dst_lines, ground_truth_points = compose_court_data(closer_outer_baseline_point, closer_outer_netline_point, further_outer_baseline_point, further_outer_netline_point, closer_inner_baseline_point, further_inner_baseline_point, closer_inner_netline_point, further_inner_netline_point, net_service_point, centre_service_point, further_service_point, closer_service_point, closer_outer_sideline, baseline, netline, further_outer_sideline, closer_inner_sideline, further_inner_sideline, centre_service_line, service_line, data)
 
 
         plot_results(train_pic, path, data.pic_name, dst_lines, dst_points)
