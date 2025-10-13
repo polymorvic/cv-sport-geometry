@@ -7,7 +7,7 @@ from pathlib import Path
 import matplotlib as mpl
 from PIL import Image
 import matplotlib.pyplot as plt
-from utils.func import get_pictures, apply_hough_transformation, group_lines, create_reference_court, warp_points, plot_results, measure_error, load_config
+from utils.func import get_pictures, apply_hough_transformation, group_lines, create_reference_court, warp_points, plot_results, measure_error, load_config, compose_court_data
 from utils.lines import Line, Point
 from utils.corners import CourtFinder
 from utils.schemas import TestConfig
@@ -87,53 +87,10 @@ for i, (data, train_pic) in enumerate(zip(config.data, train_pics)):
         
         service_line = Line.from_points(further_service_point, closer_service_point)
 
-        dst_points = {
-            'closer_outer_baseline_point': closer_outer_baseline_point,
-            'closer_outer_netline_point': closer_outer_netline_point,
-            'further_outer_baseline_point': further_outer_baseline_point,
-            'further_outer_netline_point': further_outer_netline_point,
-            'closer_inner_baseline_point': closer_inner_baseline_point,
-            'further_inner_baseline_point': further_inner_baseline_point,
-            'closer_inner_netline_point': closer_inner_netline_point, 
-            'further_inner_netline_point': further_inner_netline_point,
-            'net_service_point': net_service_point,
-            'centre_service_point': centre_service_point, 
-            'further_service_point': further_service_point, 
-            'closer_service_point': closer_service_point
-        }
-        
-        dst_lines = {
-            'closer_outer_sideline': closer_outer_sideline,
-            'baseline': baseline,
-            'netline': netline,
-            'further_outer_sideline': further_outer_sideline,
-            'closer_inner_sideline': closer_inner_sideline,
-            'further_inner_sideline': further_inner_sideline,
-            'centre_service_line': centre_service_line,
-            'service_line': service_line,
-        }
+        dst_points, dst_lines, ground_truth_points = compose_court_data(data, closer_outer_baseline_point, closer_outer_netline_point, further_outer_baseline_point, further_outer_netline_point, closer_inner_baseline_point, further_inner_baseline_point, closer_inner_netline_point, further_inner_netline_point, net_service_point, centre_service_point, further_service_point, closer_service_point, closer_outer_sideline, baseline, netline, further_outer_sideline, closer_inner_sideline, further_inner_sideline, centre_service_line, service_line)
+
 
         plot_results(train_pic, path, data.pic_name, dst_lines, dst_points)
-
-        ground_truth_points = {
-            'closer_outer_baseline_point': data.ground_truth_points.closer_outer_baseline_point,
-            'closer_outer_netline_point': data.ground_truth_points.closer_outer_netline_point,
-            'further_outer_baseline_point': data.ground_truth_points.further_outer_baseline_point,
-            'further_outer_netline_point': data.ground_truth_points.further_outer_netline_point,
-            'closer_inner_baseline_point': data.ground_truth_points.closer_inner_baseline_point,
-            'further_inner_baseline_point': data.ground_truth_points.further_inner_baseline_point,
-            'closer_inner_netline_point': data.ground_truth_points.closer_inner_netline_point, 
-            'further_inner_netline_point': data.ground_truth_points.further_inner_netline_point,
-            'net_service_point': data.ground_truth_points.net_service_point,
-            'centre_service_point': data.ground_truth_points.centre_service_point, 
-            'further_service_point': data.ground_truth_points.further_service_point, 
-            'closer_service_point': data.ground_truth_points.closer_service_point
-        }
-
-        ground_truth_points = {
-            k: {"x": v.x, "y": v.y}
-            for k, v in ground_truth_points.items()
-        }
 
         errors = measure_error(train_pic, dst_points, ground_truth_points)
 

@@ -10,6 +10,7 @@ from pathlib import Path
 from skimage.morphology import skeletonize
 from typing import Literal, Iterable, Optional
 from utils.lines import Line, LineGroup, Point, Intersection
+from utils.schemas import GroundTruthCourtPoints
 from utils.const import (ARRAY_X_INDEX, ARRAY_Y_INDEX, WIDTH, LENGTH, DIST_FROM_BASELINE, 
                          DIST_OUTER_SIDELINE, COURT_LENGTH_HALF, COURT_WIDTH_HALF)
 import matplotlib.pyplot as plt
@@ -995,3 +996,60 @@ def load_config(config_filepath: str | Path, data_model: type[BaseModel]) -> Bas
         return data_model(**config_data)
     except ValidationError as e:
         raise ValueError(f"Invalid configuration in {config_path}: {e}") from e
+    
+
+def compose_court_data(data: GroundTruthCourtPoints, closer_outer_baseline_point: Point, closer_outer_netline_point: Point, further_outer_baseline_point: Point, further_outer_netline_point: Point,closer_inner_baseline_point: Point, further_inner_baseline_point: Point, closer_inner_netline_point: Point, further_inner_netline_point: Point, net_service_point: Point, centre_service_point: Point, further_service_point: Point, closer_service_point: Point, closer_outer_sideline: Line, baseline: Line, netline: Line, further_outer_sideline: Line, closer_inner_sideline: Line, further_inner_sideline: Line, centre_service_line: Line, service_line: Line) -> tuple[dict[str, Point], dict[str, Line], dict[str, dict[str, int]]]:
+    """
+    Compose the destination and ground truth court geometry dictionaries.
+    ground_truth_points are transformed into {"x": ..., "y": ...} format.
+
+    Returns:
+        tuple: (dst_points, dst_lines, ground_truth_points)
+    """
+
+    dst_points = {
+        'closer_outer_baseline_point': closer_outer_baseline_point,
+        'closer_outer_netline_point': closer_outer_netline_point,
+        'further_outer_baseline_point': further_outer_baseline_point,
+        'further_outer_netline_point': further_outer_netline_point,
+        'closer_inner_baseline_point': closer_inner_baseline_point,
+        'further_inner_baseline_point': further_inner_baseline_point,
+        'closer_inner_netline_point': closer_inner_netline_point,
+        'further_inner_netline_point': further_inner_netline_point,
+        'net_service_point': net_service_point,
+        'centre_service_point': centre_service_point,
+        'further_service_point': further_service_point,
+        'closer_service_point': closer_service_point
+    }
+
+    dst_lines = {
+        'closer_outer_sideline': closer_outer_sideline,
+        'baseline': baseline,
+        'netline': netline,
+        'further_outer_sideline': further_outer_sideline,
+        'closer_inner_sideline': closer_inner_sideline,
+        'further_inner_sideline': further_inner_sideline,
+        'centre_service_line': centre_service_line,
+        'service_line': service_line
+    }
+
+
+    ground_truth_points = {
+        'closer_outer_baseline_point': data.ground_truth_points.closer_outer_baseline_point,
+        'closer_outer_netline_point': data.ground_truth_points.closer_outer_netline_point,
+        'further_outer_baseline_point': data.ground_truth_points.further_outer_baseline_point,
+        'further_outer_netline_point': data.ground_truth_points.further_outer_netline_point,
+        'closer_inner_baseline_point': data.ground_truth_points.closer_inner_baseline_point,
+        'further_inner_baseline_point': data.ground_truth_points.further_inner_baseline_point,
+        'closer_inner_netline_point': data.ground_truth_points.closer_inner_netline_point,
+        'further_inner_netline_point': data.ground_truth_points.further_inner_netline_point,
+        'net_service_point': data.ground_truth_points.net_service_point,
+        'centre_service_point': data.ground_truth_points.centre_service_point,
+        'further_service_point': data.ground_truth_points.further_service_point,
+        'closer_service_point': data.ground_truth_points.closer_service_point
+    }
+
+    # --- Convert ground truth points to dicts with x, y ---
+    ground_truth_points = {k: {"x": v.x, "y": v.y} for k, v in ground_truth_points.items()}
+
+    return dst_points, dst_lines, ground_truth_points
