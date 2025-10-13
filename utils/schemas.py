@@ -45,6 +45,7 @@ class ImageParams(BaseModel):
     bin_thresh: float
     bin_thresh_endline_scan: BinThreshEndlineScan
     bin_thresh_centre_service_line: float
+    max_line_gap: int
     max_line_gap_centre_service_line: int
     hough_thresh: int
     min_line_len_ratio: float

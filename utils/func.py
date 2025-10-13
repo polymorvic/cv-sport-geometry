@@ -1,8 +1,10 @@
 import os
 import cv2
 import random
+import json
 import colorsys
 import numpy as np
+from pydantic import BaseModel, ValidationError
 from PIL import Image
 from pathlib import Path
 from skimage.morphology import skeletonize
@@ -977,3 +979,19 @@ def measure_error(img: np.ndarray, found_points: dict[str, Point], ground_truth_
         distance_error = transformed_gtpt.distance(pt)
         errors.update({f"{name}_dist": distance_error})
     return errors
+
+
+def load_config(config_filepath: str | Path, data_model: type[BaseModel]) -> BaseModel:
+    """Load and validate a JSON configuration file into a Pydantic model."""
+    config_path = Path(config_filepath)
+    
+    if not config_path.is_file():
+        raise FileNotFoundError(f"Config file not found: {config_path}")
+    
+    with config_path.open(encoding="utf-8") as file:
+        config_data = json.load(file)
+    
+    try:
+        return data_model(**config_data)
+    except ValidationError as e:
+        raise ValueError(f"Invalid configuration in {config_path}: {e}") from e
