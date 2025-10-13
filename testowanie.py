@@ -143,18 +143,18 @@ for i, (data, train_pic) in enumerate(zip(config['data'], train_pics)):
         plot_results(train_pic, path, data['pic_name'], dst_lines, dst_points)
 
         ground_truth_points = {
-            'closer_outer_baseline_point': data['closer_outer_baseline_point'],
-            'closer_outer_netline_point': data['closer_outer_netline_point'],
-            'further_outer_baseline_point': data['further_outer_baseline_point'],
-            'further_outer_netline_point': data['further_outer_netline_point'],
-            'closer_inner_baseline_point': data['closer_inner_baseline_point'],
-            'further_inner_baseline_point': data['further_inner_baseline_point'],
-            'closer_inner_netline_point': data['closer_inner_netline_point'], 
-            'further_inner_netline_point': data['further_inner_netline_point'],
-            'net_service_point': data['net_service_point'],
-            'centre_service_point': data['centre_service_point'], 
-            'further_service_point': data['further_service_point'], 
-            'closer_service_point': data['closer_service_point']
+            'closer_outer_baseline_point': data['ground_truth_points']['closer_outer_baseline_point'],
+            'closer_outer_netline_point': data['ground_truth_points']['closer_outer_netline_point'],
+            'further_outer_baseline_point': data['ground_truth_points']['further_outer_baseline_point'],
+            'further_outer_netline_point': data['ground_truth_points']['further_outer_netline_point'],
+            'closer_inner_baseline_point': data['ground_truth_points']['closer_inner_baseline_point'],
+            'further_inner_baseline_point': data['ground_truth_points']['further_inner_baseline_point'],
+            'closer_inner_netline_point': data['ground_truth_points']['closer_inner_netline_point'], 
+            'further_inner_netline_point': data['ground_truth_points']['further_inner_netline_point'],
+            'net_service_point': data['ground_truth_points']['net_service_point'],
+            'centre_service_point': data['ground_truth_points']['centre_service_point'], 
+            'further_service_point': data['ground_truth_points']['further_service_point'], 
+            'closer_service_point': data['ground_truth_points']['closer_service_point']
         }
 
         errors = measure_error(train_pic, dst_points, ground_truth_points)
