@@ -7,8 +7,7 @@ from pathlib import Path
 import matplotlib as mpl
 from PIL import Image
 import matplotlib.pyplot as plt
-from utils.func import (get_pictures, apply_hough_transformation, group_lines,
-                        transform_annotation)
+from utils.func import get_pictures, apply_hough_transformation, group_lines, create_reference_court, warp_points, plot_results, measure_error
 from utils.lines import Line
 from utils.corners import CourtFinder
 
@@ -48,13 +47,10 @@ for i, (data, train_pic) in enumerate(zip(config['data'], train_pics)):
         closer_outer_baseline_intersecetion, closer_outer_netintersection, used_line = candidates.find_closer_outer_baseline_point()
         closer_outer_baseline_point = closer_outer_baseline_intersecetion.point
         closer_outer_netline_point = closer_outer_netintersection.point
+
         closer_outer_sideline = Line.from_points(closer_outer_baseline_point, closer_outer_netline_point)
 
-        gt_closer_outer_baseline_point = transform_annotation(train_pic, data['closer_outer_baseline_point'])
-        gt_closer_outer_netline_point = transform_annotation(train_pic, data['closer_outer_netline_point'])
 
-        closer_outer_baseline_point_dist = gt_closer_outer_baseline_point.distance(closer_outer_baseline_point)
-        closer_outer_netline_point_dist = gt_closer_outer_netline_point.distance(closer_outer_netline_point)
 
         # further_outer_baseline_point, baseline  -------
         further_outer_baseline_intersection, last_local_line = candidates.find_further_outer_baseline_intersection(closer_outer_baseline_intersecetion, used_line, data['canny_thresh']['lower'] , data['canny_thresh']['upper'], offset=data['offset'])
@@ -62,8 +58,7 @@ for i, (data, train_pic) in enumerate(zip(config['data'], train_pics)):
         
         baseline = Line.from_points(closer_outer_baseline_point, further_outer_baseline_point)
 
-        gt_further_outer_baseline_point = transform_annotation(train_pic, data['further_outer_baseline_point'])
-        further_outer_baseline_point_dist = gt_further_outer_baseline_point.distance(further_outer_baseline_point)
+
 
         # netline -----
         netline = candidates.find_netline(closer_outer_netline_point, baseline, data['max_line_gap'])
@@ -73,23 +68,11 @@ for i, (data, train_pic) in enumerate(zip(config['data'], train_pics)):
         further_outer_sideline = candidates.find_further_doubles_sideline(further_outer_baseline_point, last_local_line, data['offset'], data['extra_offset'], data['bin_thresh'], data['surface_type'])
         further_outer_netline_point = further_outer_sideline.intersection(netline, train_pic).point
 
-        gt_further_outer_netline_point = transform_annotation(train_pic, data['further_outer_netline_point'])
-        further_outer_netline_point_dist = gt_further_outer_netline_point.distance(further_outer_netline_point)
+
 
 
         # inner points
-        closer_inner_baseline_point, further_inner_baseline_point = candidates.scan_endline(baseline,
-                                                                                            netline, 
-                                                                                            closer_outer_baseline_point, 
-                                                                                            further_outer_netline_point, 
-                                                                                            closer_outer_netline_point, 
-                                                                                            further_outer_baseline_point, 
-                                                                                            data['bin_thresh_endline_scan']['baseline'],
-                                                                                            data['canny_thresh']['lower'],
-                                                                                            data['canny_thresh']['upper'],
-                                                                                            data['max_line_gap'],
-                                                                                            searching_line = 'base',
-                                                                                            )
+        closer_inner_baseline_point, further_inner_baseline_point = candidates.scan_endline(baseline, netline, closer_outer_baseline_point, further_outer_netline_point, closer_outer_netline_point, further_outer_baseline_point, data['bin_thresh_endline_scan']['baseline'], data['canny_thresh']['lower'], data['canny_thresh']['upper'], data['max_line_gap'],searching_line = 'base')
 
 
         closer_inner_netline_point, further_inner_netline_point = candidates.scan_endline(baseline, 
@@ -127,127 +110,78 @@ for i, (data, train_pic) in enumerate(zip(config['data'], train_pics)):
                                                                                 data['hough_thresh'],
                                                                                 )
         
-        centre_service_point, further_service_point, closer_service_point = candidates.find_center(closer_outer_baseline_point, 
-                                                                                                closer_outer_netline_point, 
-                                                                                                further_outer_baseline_point,
-                                                                                                further_outer_netline_point, 
-                                                                                                closer_inner_baseline_point,
-                                                                                                further_inner_baseline_point,
-                                                                                                closer_inner_netline_point,
-                                                                                                further_inner_netline_point,
-                                                                                                baseline, 
-                                                                                                closer_inner_sideline,
-                                                                                                further_inner_sideline,
-                                                                                                centre_service_line,
-                                                                                                data['bin_thresh_centre_service_line'],
-                                                                                                data['canny_thresh']['lower'],
-                                                                                                data['canny_thresh']['upper'],
-                                                                                                data['max_line_gap_centre_service_line'],
-                                                                                                data['min_line_len_ratio'],
-                                                                                                data['hough_thresh']
-                                                                                                )
+        centre_service_point, further_service_point, closer_service_point = candidates.find_center(closer_outer_baseline_point, closer_outer_netline_point, further_outer_baseline_point, further_outer_netline_point, closer_inner_baseline_point,further_inner_baseline_point, closer_inner_netline_point, further_inner_netline_point, baseline, closer_inner_sideline,further_inner_sideline, centre_service_line, data['bin_thresh_centre_service_line'], data['canny_thresh']['lower'], data['canny_thresh']['upper'], data['max_line_gap_centre_service_line'], data['min_line_len_ratio'], data['hough_thresh'])
         
         service_line = Line.from_points(further_service_point, closer_service_point)
+
+        dst_points = {
+            'closer_outer_baseline_point': closer_outer_baseline_point,
+            'closer_outer_netline_point': closer_outer_netline_point,
+            'further_outer_baseline_point': further_outer_baseline_point,
+            'further_outer_netline_point': further_outer_netline_point,
+            'closer_inner_baseline_point': closer_inner_baseline_point,
+            'further_inner_baseline_point': further_inner_baseline_point,
+            'closer_inner_netline_point': closer_inner_netline_point, 
+            'further_inner_netline_point': further_inner_netline_point,
+            'net_service_point': net_service_point,
+            'centre_service_point': centre_service_point, 
+            'further_service_point': further_service_point, 
+            'closer_service_point': closer_service_point
+        }
         
+        dst_lines = {
+            'closer_outer_sideline': closer_outer_sideline,
+            'baseline': baseline,
+            'netline': netline,
+            'further_outer_sideline': further_outer_sideline,
+            'closer_inner_sideline': closer_inner_sideline,
+            'further_inner_sideline': further_inner_sideline,
+            'centre_service_line': centre_service_line,
+            'service_line': service_line,
+        }
 
-        gt_closer_inner_baseline_point = transform_annotation(train_pic, data['closer_inner_baseline_point'])
-        closer_inner_baseline_point_dist = gt_closer_inner_baseline_point.distance(closer_inner_baseline_point)
+        plot_results(train_pic, path, data['pic_name'], dst_lines, dst_points)
 
-        gt_further_inner_baseline_point = transform_annotation(train_pic, data['further_inner_baseline_point'])
-        further_inner_baseline_point_dist = gt_further_inner_baseline_point.distance(further_inner_baseline_point)
+        ground_truth_points = {
+            'closer_outer_baseline_point': data['closer_outer_baseline_point'],
+            'closer_outer_netline_point': data['closer_outer_netline_point'],
+            'further_outer_baseline_point': data['further_outer_baseline_point'],
+            'further_outer_netline_point': data['further_outer_netline_point'],
+            'closer_inner_baseline_point': data['closer_inner_baseline_point'],
+            'further_inner_baseline_point': data['further_inner_baseline_point'],
+            'closer_inner_netline_point': data['closer_inner_netline_point'], 
+            'further_inner_netline_point': data['further_inner_netline_point'],
+            'net_service_point': data['net_service_point'],
+            'centre_service_point': data['centre_service_point'], 
+            'further_service_point': data['further_service_point'], 
+            'closer_service_point': data['closer_service_point']
+        }
 
-        gt_closer_inner_netline_point = transform_annotation(train_pic, data['closer_inner_netline_point'])
-        closer_inner_netline_point_dist = gt_closer_inner_netline_point.distance(closer_inner_netline_point)
+        errors = measure_error(train_pic, dst_points, ground_truth_points)
 
-        gt_further_inner_netline_point = transform_annotation(train_pic, data['further_inner_netline_point'])
-        further_inner_netline_point_dist = gt_further_inner_netline_point.distance(further_inner_netline_point)
+        # perspective transform
+        ref_points, ref_img = create_reference_court()
 
-        gt_centre_service_point = transform_annotation(train_pic, data['centre_service_point'])
-        centre_service_point_dist = gt_centre_service_point.distance(centre_service_point)
-
-        gt_further_service_point = transform_annotation(train_pic, data['further_service_point'])
-        further_service_point_dist = gt_further_service_point.distance(further_service_point)
-
-        gt_closer_service_point = transform_annotation(train_pic, data['closer_service_point'])
-        closer_service_point_dist = gt_closer_service_point.distance(closer_service_point)
-
-        gt_net_service_point = transform_annotation(train_pic, data['net_service_point'])
-        net_service_point_dist = gt_net_service_point.distance(net_service_point)
-
-
-
-        pic = train_pic.copy()
-        pts1 = closer_outer_sideline.limit_to_img(pic)
-        pts2 = baseline.limit_to_img(pic)
-        pts3 = netline.limit_to_img(pic)
-        pts4 = further_outer_sideline.limit_to_img(pic)
-        pts5 = closer_inner_sideline.limit_to_img(pic)
-        pts6 = further_inner_sideline.limit_to_img(pic)
-        pts7 = centre_service_line.limit_to_img(pic)
-        pts8 = service_line.limit_to_img(pic)
-
-        cv2.line(pic, *pts1, (0, 0, 255))
-        cv2.line(pic, *pts2, (0, 0, 255))
-        cv2.line(pic, *pts3, (0, 0, 255))
-        cv2.line(pic, *pts4, (0, 0, 255))
-        cv2.line(pic, *pts5, (0, 0, 255))
-        cv2.line(pic, *pts6, (0, 0, 255))
-        cv2.line(pic, *pts7, (0, 0, 255))
-        cv2.line(pic, *pts8, (0, 0, 255))
+        transformed_points = warp_points(ref_points, dst_points, train_pic, 
+                                         ref_img, 
+                                        'closer_outer_netline_point', 
+                                        'closer_outer_baseline_point', 
+                                        'further_outer_netline_point', 
+                                        'further_outer_baseline_point')
         
-        cv2.circle(pic, closer_outer_netline_point, 1, (255, 0,0), 3, -1)
-        cv2.circle(pic, closer_outer_baseline_point, 1, (0,255,0), 3, -1)
-        cv2.circle(pic, further_outer_baseline_point, 1, (0,0,255), 3, -1)
-        cv2.circle(pic, further_outer_netline_point, 1, (255,0,0), 3, -1)
+        # print(transformed_points)
 
-        cv2.circle(pic, closer_inner_baseline_point, 1, (255,0,0), 3, -1)
-        cv2.circle(pic, closer_inner_netline_point, 1, (255,0,0), 3, -1)
-        cv2.circle(pic, further_inner_baseline_point, 1, (255,0,0), 3, -1)
-        cv2.circle(pic, further_inner_netline_point, 1, (255,0,0), 3, -1)
-
-        cv2.circle(pic, net_service_point, 1, (255,0,0), 3, -1)
-
-        cv2.circle(pic, centre_service_point, 1, (255,0,0), 3, -1)
-        cv2.circle(pic, further_service_point, 1, (255,0,0), 3, -1)
-        cv2.circle(pic, closer_service_point, 1, (255,0,0), 3, -1)
-
-        # for inter in intersections:
-        #     cv2.circle(pic, inter.point, 1, (0, 0, 0))
-
-        Image.fromarray(pic).save(path / data['pic_name'])
+        
 
     except Exception as e:
         print(e)
-        closer_outer_baseline_point_dist = None
-        closer_outer_netline_point_dist = None
+        errors = dict.fromkeys(dst_points.keys(), None)
 
     finally:
-        test_df_rows.append([i, data['pic_name'], data['bin_thresh'], 
-                             closer_outer_baseline_point_dist, 
-                             closer_outer_netline_point_dist, 
-                             further_outer_baseline_point_dist, 
-                             further_outer_netline_point_dist,
-                             closer_inner_baseline_point_dist,
-                             further_inner_baseline_point_dist,
-                             closer_inner_netline_point_dist,
-                             further_inner_netline_point_dist,
-                             centre_service_point_dist,
-                             further_service_point_dist,
-                             closer_service_point_dist,
-                             net_service_point_dist
-                             ])
+        img_index_name = [i, data['pic_name']]
+        distances = [errors[dist] for dist in errors]
+        test_df_rows.append(img_index_name + distances)
 
-pd.DataFrame(test_df_rows, columns=['pic_index', 'pic_name', 'bin_thresh', 
-                                    'closer_outer_baseline_point_dist', 
-                                    'closer_outer_netline_point_dist', 
-                                    'further_outer_baseline_point_dist', 
-                                    'further_outer_netline_point_dist',
-                                    'closer_inner_baseline_point',
-                                    'further_inner_baseline_point',
-                                    'closer_inner_netline_point',
-                                    'further_inner_netline_point',
-                                    'centre_service_point_dist',
-                                    'further_service_point_dist',
-                                    'closer_service_point_dist',
-                                    'net_service_point_dist'
-                                    ]).to_csv(path / "test_df.csv", index=False)
+
+
+pd.DataFrame(test_df_rows, columns = ['pic_index', 'pic_name'] + list(errors.keys())).to_csv(path / "test_df.csv", index=False)

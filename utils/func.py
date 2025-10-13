@@ -3,6 +3,8 @@ import cv2
 import random
 import colorsys
 import numpy as np
+from PIL import Image
+from pathlib import Path
 from skimage.morphology import skeletonize
 from typing import Literal, Iterable, Optional
 from utils.lines import Line, LineGroup, Point, Intersection
@@ -948,16 +950,30 @@ def create_reference_court(ref_img_height: int = 25_000, ref_img_width: int = 11
     }.items()}, ref_img
 
 
-# def warp_points(ref_points: dict[str, Point], dst_points: dict[str, Point], src_image: np.ndarray, *names) -> np.ndarray:
-    
-#     filtered_ref_points = []
-#     filtered_dst_points = []
-#     for name in names:
-#         filtered_ref_points.append(ref_points[name])
-#         filtered_dst_points.append(dst_points[name])
+def warp_points(ref_points: dict[str, Point], dst_points: dict[str, Point], src_image: np.ndarray, ref_img: np.ndarray, *names) -> np.ndarray:
+    ref_points_arr = np.float32([ref_points[n].to_tuple() for n in names])
+    dst_points_arr = np.float32([dst_points[n].to_tuple() for n in names])
+    H, _ = cv2.findHomography(ref_points_arr, dst_points_arr)
+    return cv2.perspectiveTransform(ref_points_arr[np.newaxis,:,:], H)
 
-#     ref_points_arr = np.array(filtered_ref_points, dtype=np.float32)
-#     dst_points_arr = np.array(filtered_dst_points, dtype=np.float32)
 
-#     H, _ = cv2.findHomography(ref_points, dst_points)
-#     transformed_img = cv2.warpPerspective(ref_img, H, (train_pic.shape[1], train_pic.shape[0]))
+def plot_results(img: np.ndarray, path: Path, pic_name: str, lines: dict[str, Line], points: dict[str, Point]) -> None:
+    pic = img.copy()
+
+    for point in points.values():
+        cv2.circle(pic, point, 1, (255, 0,0), 3, -1)
+
+    for line in lines.values():
+        pt = line.limit_to_img(pic)
+        cv2.line(pic, *pt, (0, 0, 255))
+
+    Image.fromarray(pic).save(path / pic_name)
+
+
+def measure_error(img: np.ndarray, found_points: dict[str, Point], ground_truth_points: dict[str, dict[str, float]]) -> dict[str, float]:
+    errors = {}
+    for (name, pt), raw_gtpt in zip(found_points.items(), ground_truth_points.values()):
+        transformed_gtpt = transform_annotation(img, raw_gtpt)
+        distance_error = transformed_gtpt.distance(pt)
+        errors.update({f"{name}_dist": distance_error})
+    return errors
