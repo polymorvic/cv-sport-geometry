@@ -15,6 +15,10 @@ from utils.const import (ARRAY_X_INDEX, ARRAY_Y_INDEX, WIDTH, LENGTH, DIST_FROM_
                          DIST_OUTER_SIDELINE, COURT_LENGTH_HALF, COURT_WIDTH_HALF)
 import matplotlib.pyplot as plt
 
+def _plot_objs(*objs) -> None:
+    for obj in objs:
+        plt.imshow(obj); plt.show() 
+        
 
 def get_pictures(path: str) -> dict[str, list[np.ndarray]]:
     """
