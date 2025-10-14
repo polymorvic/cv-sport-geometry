@@ -969,8 +969,10 @@ def warp_points(ref_points: dict[str, Point], dst_points: dict[str, Point], src_
 
     all_ref_points_arr = np.array([(p.x, p.y) for p in ref_points.values()], dtype=np.float32)[np.newaxis,::]
     transformed_points = cv2.perspectiveTransform(all_ref_points_arr, H)
+    coords = transformed_points[0]
+    transformed_points_dict = {name: Point(*coords[i]) for i, name in enumerate(ref_points.keys())}
 
-    return transformed_points, transformed_img, covered_img
+    return transformed_points_dict, transformed_img, covered_img
 
 
 def plot_results(img: np.ndarray, path: Path, pic_name: str, lines: dict[str, Line], points: dict[str, Point]) -> None:
@@ -986,12 +988,14 @@ def plot_results(img: np.ndarray, path: Path, pic_name: str, lines: dict[str, Li
     Image.fromarray(pic).save(path / pic_name)
 
 
-def measure_error(img: np.ndarray, found_points: dict[str, Point], ground_truth_points: dict[str, dict[str, float]]) -> dict[str, float]:
+def measure_error(img: np.ndarray, found_points: dict[str, Point], ground_truth_points: dict[str, dict[str, float]], prefix: str | None = None) -> dict[str, float]:
     errors = {}
-    for (name, pt), raw_gtpt in zip(found_points.items(), ground_truth_points.values()):
+    for name, pt in found_points.items():
+        raw_gtpt = ground_truth_points.get(name)
         transformed_gtpt = transform_annotation(img, raw_gtpt)
         distance_error = transformed_gtpt.distance(pt)
-        errors.update({f"{name}_dist": distance_error})
+        key = f"{prefix}_{name}_dist" if prefix else f"{name}_dist"
+        errors.update({key: distance_error})
     return errors
 
 
