@@ -18,7 +18,7 @@ import matplotlib.pyplot as plt
 def _plot_objs(*objs) -> None:
     for obj in objs:
         plt.imshow(obj); plt.show() 
-        
+
 
 def get_pictures(path: str) -> dict[str, list[np.ndarray]]:
     """
@@ -957,11 +957,20 @@ def create_reference_court(ref_img_height: int = 25_000, ref_img_width: int = 11
     }.items()}, ref_img
 
 
-def warp_points(ref_points: dict[str, Point], dst_points: dict[str, Point], src_image: np.ndarray, ref_img: np.ndarray, *names) -> np.ndarray:
+def warp_points(ref_points: dict[str, Point], dst_points: dict[str, Point], src_image: np.ndarray, ref_img: np.ndarray, *names) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     ref_points_arr = np.float32([ref_points[n].to_tuple() for n in names])
     dst_points_arr = np.float32([dst_points[n].to_tuple() for n in names])
     H, _ = cv2.findHomography(ref_points_arr, dst_points_arr)
-    return cv2.perspectiveTransform(ref_points_arr[np.newaxis,:,:], H)
+
+    height, width = src_image.shape[:2]
+    transformed_img = cv2.warpPerspective(ref_img, H, (width, height))
+
+    covered_img = cv2.addWeighted(src_image, 1, transformed_img, 1, 0)
+
+    all_ref_points_arr = np.array([(p.x, p.y) for p in ref_points.values()], dtype=np.float32)[np.newaxis,::]
+    transformed_points = cv2.perspectiveTransform(all_ref_points_arr, H)
+
+    return transformed_points, transformed_img, covered_img
 
 
 def plot_results(img: np.ndarray, path: Path, pic_name: str, lines: dict[str, Line], points: dict[str, Point]) -> None:
