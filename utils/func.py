@@ -11,8 +11,7 @@ from skimage.morphology import skeletonize
 from typing import Literal, Iterable, Optional
 from utils.lines import Line, LineGroup, Point, Intersection
 from utils.schemas import GroundTruthCourtPoints
-from utils.const import (ARRAY_X_INDEX, ARRAY_Y_INDEX, WIDTH, LENGTH, DIST_FROM_BASELINE, 
-                         DIST_OUTER_SIDELINE, COURT_LENGTH_HALF, COURT_WIDTH_HALF)
+from utils.const import ARRAY_X_INDEX, ARRAY_Y_INDEX, WIDTH, LENGTH, DIST_FROM_BASELINE, DIST_OUTER_SIDELINE, COURT_LENGTH_HALF, COURT_WIDTH_HALF, SETTINGS
 import matplotlib.pyplot as plt
 
 def _plot_objs(*objs) -> None:
@@ -119,7 +118,6 @@ def group_lines(lines: list[Line], thresh_theta: float | int = 5, thresh_interce
             if group.process_line(line, thresh_theta, thresh_intercept):
                 break
         else:
-            # No group matched, create a new group
             groups.append(LineGroup([line]))
 
     return groups
@@ -172,7 +170,6 @@ def generate_similar_color_pairs(n: int = 10) -> list[tuple[tuple[int, int, int]
         rgb1 = tuple(int(c * 255) for c in colorsys.hsv_to_rgb(h, s_low, v))
         rgb2 = tuple(int(c * 255) for c in colorsys.hsv_to_rgb(h, s_high, v))
 
-        # convert to bgr for opencv
         bgr1 = rgb1[::-1]
         bgr2 = rgb2[::-1]
 
@@ -250,13 +247,9 @@ def find_point_neighbourhood(point: Point, offset: int, img: np.ndarray, line: L
         x_start = max(int(point.x) - offset, 0)
         x_end = min(int(point.x) + offset, width - 1)
 
-        # print(f'{x_start=}{x_end=}')
         if x_start > x_end:
             x_start, x_end = x_end, x_start
 
-        # print(f'{x_start=}{x_end=}')
-
-        # print(f'{line.slope=}{line.intercept=}')
         if line.slope is None or line.intercept is None:
             y_start = max(int(point.y) - offset, 0)
             y_end = min(int(point.y) + offset, height - 1)
@@ -269,14 +262,8 @@ def find_point_neighbourhood(point: Point, offset: int, img: np.ndarray, line: L
             if curr_h < offset:
                 y_start, y_end = clamp_window_around(int(point.y), offset, height)
 
-        # print(f'{y_start=}{y_end=}')
-
         if y_start > y_end:
             y_start, y_end = y_end, y_start
-
-        # print(f'{y_start=}{y_end=}')
-
-        # print('!!!!!!!!!!!!!!!!', f'{y_start=}{y_end=}', f'{x_start=}{x_end=}', '!!!!!!!!!!!!!!!!')
 
     return img[y_start:y_end+1, x_start:x_end+1], x_start, y_start
 
@@ -419,12 +406,6 @@ def find_net_lines(img_piece: np.ndarray, cannys_thresh_lower: int = 50, cannys_
     neg_gray_img = 255 - piece_gray
     edges = cv2.Canny(neg_gray_img, cannys_thresh_lower, cannys_thresh_upper)
 
-    # plt.imshow(neg_gray_img)
-    # plt.show()
-
-    # plt.imshow(edges)
-    # plt.show()
-
     lines = cv2.HoughLinesP(edges, 1, np.pi/180, threshold=hough_thresh, minLineLength=min_line_len, maxLineGap=max_line_gap)
     if lines is None:
         lines = []
@@ -434,8 +415,7 @@ def find_net_lines(img_piece: np.ndarray, cannys_thresh_lower: int = 50, cannys_
         x1, y1, x2, y2 = line[0]
         cv2.line(img_copy, (x1, y1), (x2, y2), (0, 255, 0), 2)
 
-    # plt.imshow(img_copy)
-    # plt.show()
+    SETTINGS.debug and _plot_objs(piece_gray, neg_gray_img, edges, img_copy)
 
     line_obj = [Line.from_hough_line(line[0]) for line in lines]
     line_obj = [line for line in line_obj if line.slope is not None] 
@@ -501,30 +481,20 @@ def is_court_corner(img: np.ndarray, intersect_point: Point, original_range: tup
     kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (9, 9))
     closed_bin_img = cv2.morphologyEx(bin_img, cv2.MORPH_CLOSE, kernel)
 
-    # plt.imshow(img)
-    # plt.show()
-
-    # plt.imshow(gray)
-    # plt.show()
-
-    # plt.imshow(bin_img)
-    # plt.show()
-
     local_intersect_point = transform_point(intersect_point, *original_range, False)
     if np.sum(closed_bin_img[local_intersect_point.y - y_range: local_intersect_point.y + y_range, local_intersect_point.x - x_range: local_intersect_point.x + x_range]) == 0:
         return False
     
-    # cv2.circle(img, local_intersect_point, 2, (0, 255, 0))
-    # plt.imshow(img)
-    # plt.show()
+    img_copy = img.copy()
+    cv2.circle(img_copy, local_intersect_point, 2, (0, 255, 0))
 
+    SETTINGS.debug and _plot_objs(img, gray, bin_img, img_copy)
 
     ones_iloc = np.argwhere(closed_bin_img > 0)
     x_range = np.unique(ones_iloc[:,1])
     y_range = np.unique(ones_iloc[:,0])
 
     if len(x_range) == 0 or len(x_range) == closed_bin_img.shape[1] and len(y_range) == closed_bin_img.shape[0]:
-        # print('uniques')
         return False
 
     if not np.all(np.diff(x_range)==1):
@@ -536,17 +506,14 @@ def is_court_corner(img: np.ndarray, intersect_point: Point, original_range: tup
         ones = np.argwhere(closed_bin_img[row, :]).flatten()
         seq_num = _count_array_sequence_group(ones)
 
-        # print(f'{seq_num}-->{ones}')
 
         if not seq_groups or seq_groups[-1] != seq_num:
             seq_groups.append(seq_num)
 
-    # print('-->'.join(map(str, seq_groups)))
 
     if seq_groups != [1, 2, 1] and seq_groups != [2, 1]:
         return False
     
-    # print('return true')
     return True
 
 
@@ -580,18 +547,6 @@ def is_inner_sideline(img: np.ndarray, bin_thresh: float = 0.8, hough_line_thres
 
     skel = skeletonize(bin_img).astype(np.uint8)
 
-    # plt.imshow(img)
-    # plt.show()
-
-    # plt.imshow(gray)
-    # plt.show()
-
-    # plt.imshow(bin_img)
-    # plt.show()
-
-    # plt.imshow(skel)
-    # plt.show()
-
     lines = cv2.HoughLinesP(skel, 1, np.pi/180, threshold=hough_line_thresh, minLineLength=min_line_len, maxLineGap=min_line_gap)
     if lines is None:
         lines = []
@@ -601,9 +556,7 @@ def is_inner_sideline(img: np.ndarray, bin_thresh: float = 0.8, hough_line_thres
         x1, y1, x2, y2 = line[0]
         cv2.line(img_copy, (x1, y1), (x2, y2), (0, 255, 0), 2)
 
-    # print(len(lines))
-    # plt.imshow(img_copy)
-    # plt.show()  
+    SETTINGS.debug and _plot_objs(img, gray, bin_img, skel, img_copy)
 
     line_obj = [Line.from_hough_line(line[0]) for line in lines]
     line_obj = [line for line in line_obj if line.slope is not None] 
@@ -662,12 +615,6 @@ def get_further_outer_baseline_corner(img: np.ndarray, local_line: Line, cannys_
     edges = cv2.Canny(img_piece_gray, cannys_thresh_lower, cannys_thresh_upper)
     filled_edges = fill_edges_image(edges)
 
-    # plt.imshow(edges)
-    # plt.show()
-
-    # plt.imshow(filled_edges)
-    # plt.show()
-
     lines = cv2.HoughLinesP(edges, 1, np.pi/180, threshold=hough_thresh, minLineLength=min_line_len, maxLineGap=max_line_gap)
     if lines is None:
         lines = []
@@ -681,8 +628,7 @@ def get_further_outer_baseline_corner(img: np.ndarray, local_line: Line, cannys_
         pts = line.limit_to_img(img_copy)
         cv2.line(img_copy, *pts, (0, 255, 0), 1)
 
-    # plt.imshow(img_copy)
-    # plt.show()
+    SETTINGS.debug and _plot_objs(edges, filled_edges, img_copy)
 
     if check_items_sign(grouped_lines):
         return None
@@ -711,31 +657,17 @@ def get_further_outer_baseline_corner(img: np.ndarray, local_line: Line, cannys_
                 col_range = range(col_start, edges.shape[1])
 
             skip_line = False
-    
-            # sums = []
-            # for col in col_range:
-            #     sums.append(np.sum(edges[:, col]))
-            
-            # print(sums)
-            # if all(sums):
-            #     skip_line = True
 
             sequence = []
             analyze_line = intersection.line1 if np.sign(intersection.line1.slope) == np.sign(local_line.slope) else intersection.line2
             for col in col_range:
                 row = analyze_line.y_for_x(col)
                 if row >= 0:
-                    # print(f'{row=} {col=} {filled_edges[row, col]}')
                     seq_num = int(filled_edges[row, col])
 
                     if not sequence or sequence[-1] != seq_num:
                         sequence.append(seq_num)
                         sequence.append(seq_num)
-
-            # print(sequence)
-            # print('cond 1', all(x == 0 for x in sequence))
-            # print('cond 2', local_line.slope > 0 and sequence[0] == 0 and sequence[-1] == 1)
-            # print('cond 3', local_line.slope < 0 and sequence[0] == 1 and sequence[-1] == 0)
 
             if not (all(x == 0 for x in sequence) or (local_line.slope > 0 and sequence[0] == 0 and sequence[-1] == 1) or (local_line.slope < 0 and sequence[0] == 1 and sequence[-1] == 0)):
                 skip_line = True
@@ -746,7 +678,7 @@ def get_further_outer_baseline_corner(img: np.ndarray, local_line: Line, cannys_
             if intersection not in intersections:
                 intersections.append(intersection)
 
-    return _select_intersection_by_x(intersections, local_line) # intersections[0] if len(intersections) > 0 else intersections
+    return _select_intersection_by_x(intersections, local_line)
 
 
 def get_closest_line(lines, point):
@@ -757,10 +689,8 @@ def get_closest_line(lines, point):
     
     for line in lines:
         if line.xv is not None:
-            # Vertical line
             dist = abs(x - line.xv)
         else:
-            # Regular line: y = mx + b -> mx - y + b = 0
             dist = abs(line.slope * x - y + line.intercept) / np.sqrt(line.slope**2 + 1)
         
         if dist < min_dist:
@@ -866,14 +796,10 @@ def image_to_lines(image: np.ndarray, bin_thresh: float, cannys_lower_thresh: in
     bin_img = (img_gray > img_gray.max() * bin_thresh).astype(np.uint8) * 255
     edges = cv2.Canny(bin_img, cannys_lower_thresh, cannys_upper_thresh)
 
-    # plt.imshow(edges)
-    # plt.show()
+    SETTINGS.debug and _plot_objs(edges)
 
     lines = cv2.HoughLinesP(edges, 1, np.pi/180, threshold=hough_thresh, minLineLength=min_line_len, maxLineGap=hough_max_line_gap)
     lines = [] if lines is None else lines
-    
-    # line_obj = [Line.from_hough_line(line[0]) for line in lines]
-    # line_obj = [line for line in line_obj if line.slope is not None and np.sign(line.slope) != np.sign(reference_line.slope)]
     
     ref_sign = np.sign(reference_line.slope)
     cmp = (lambda a, b: a == b) if same_slope_sign else (lambda a, b: a != b)
@@ -915,30 +841,24 @@ def create_reference_court(ref_img_height: int = 25_000, ref_img_width: int = 11
     cv2.line(ref_img, ref_closer_outer_baseline_point, ref_closer_outer_netline_point, (255,0,0), line_thickness)
     cv2.line(ref_img, ref_closer_outer_netline_point, ref_closer_outer_baseline_point_2, (0,255,0), line_thickness)
 
-
     cv2.line(ref_img, ref_further_outer_baseline_point, ref_further_outer_netline_point, (255,0,0), line_thickness)
     cv2.line(ref_img, ref_further_outer_netline_point, ref_further_outer_baseline_point_2, (0,255,0), line_thickness)
 
-    # baselines
     cv2.line(ref_img, ref_closer_outer_baseline_point, ref_further_outer_baseline_point, (255,0,0), line_thickness)
     cv2.line(ref_img, ref_closer_outer_baseline_point_2, ref_further_outer_baseline_point_2, (0,255,0), line_thickness)
 
-    # inner sidelines
     cv2.line(ref_img, ref_closer_inner_baseline_point, ref_closer_inner_netline_point, (255,0,0), line_thickness)
     cv2.line(ref_img, ref_closer_inner_netline_point, ref_closer_inner_baseline_point_2, (0,255,0), line_thickness)
 
     cv2.line(ref_img, ref_further_inner_baseline_point, ref_further_inner_netline_point, (255,0,0), line_thickness)
     cv2.line(ref_img, ref_further_inner_netline_point, ref_further_inner_baseline_point_2, (0,255,0), line_thickness)
 
-    # service lines
     cv2.line(ref_img, ref_closer_service_point, ref_further_service_point, (255,0,0), line_thickness)
     cv2.line(ref_img, ref_closer_service_point_2, ref_further_service_point_2, (0,255,0), line_thickness)
 
-    # centre service lines
     cv2.line(ref_img, ref_net_service_point, ref_centre_service_point, (255,0,0), line_thickness)
     cv2.line(ref_img, ref_net_service_point, ref_centre_service_point_2, (0,255,0), line_thickness)
 
-    # netline
     cv2.line(ref_img, ref_closer_outer_netline_point, ref_further_outer_netline_point, (255,0,0), line_thickness)
 
     return {name: Point.from_iterable(point) for name, point in {
