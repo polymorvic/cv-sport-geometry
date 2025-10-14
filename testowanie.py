@@ -6,6 +6,7 @@ import pandas as pd
 from pathlib import Path
 import matplotlib as mpl
 from PIL import Image
+from pprint import pprint
 import matplotlib.pyplot as plt
 from utils.func import get_pictures, apply_hough_transformation, group_lines, create_reference_court, warp_points, plot_results, measure_error, load_config, compose_court_data
 from utils.lines import Line, Point
@@ -97,21 +98,40 @@ for i, (data, train_pic) in enumerate(zip(config.data, train_pics)):
         # perspective transform
         ref_points, ref_img = create_reference_court()
 
-        transformed_points = warp_points(ref_points, dst_points, train_pic, ref_img, 'closer_outer_netline_point', 'closer_outer_baseline_point', 'further_outer_netline_point', 'further_outer_baseline_point')
-        
-        # print(transformed_points)
+        scenario_errors = []
+        scenarios = [
+            ('test1', ['closer_outer_baseline_point', 'closer_outer_netline_point', 'closer_inner_netline_point', 'closer_inner_baseline_point']),
+            ('test2', ['closer_outer_baseline_point', 'closer_inner_baseline_point', 'further_inner_baseline_point', 'further_outer_baseline_point', 'further_outer_netline_point', 'net_service_point', 'closer_inner_netline_point', 'closer_outer_netline_point']),
+            ('test3', ['closer_outer_baseline_point', 'closer_inner_baseline_point', 'closer_service_point', 'centre_service_point', 'further_service_point']),
+            ('test4', ['further_outer_baseline_point', 'further_inner_baseline_point', 'further_service_point', 'centre_service_point', 'net_service_point']),
+        ]
 
-        
+        for name, points in scenarios:
+            transformed_points, _, _ = warp_points(ref_points, dst_points, train_pic, ref_img, *points)
+            error = measure_error(train_pic, transformed_points, ground_truth_points, name)
+            scenario_errors.append(error)
 
     except Exception as e:
         print(e)
         errors = dict.fromkeys(dst_points.keys(), None)
+        scenario_errors = []
 
     finally:
-        img_index_name = [i, data.pic_name]
-        distances = [errors[dist] for dist in errors]
-        test_df_rows.append(img_index_name + distances)
+        row_dict = {
+            'pic_index': i,
+            'pic_name': data.pic_name,
+            **errors 
+        }
 
+    for (scenario_name, _), err_dict in zip(scenarios, scenario_errors):
+        if isinstance(err_dict, dict):
+            for k, v in err_dict.items():
+                row_dict[f'{scenario_name}_{k}'] = v
 
+    test_df_rows.append(row_dict)
 
-pd.DataFrame(test_df_rows, columns = ['pic_index', 'pic_name'] + list(errors.keys())).to_csv(path / "test_df.csv", index=False)
+df = pd.DataFrame.from_records(test_df_rows)
+base_cols = ['pic_index', 'pic_name'] + list(errors.keys())
+scenario_cols = [c for c in df.columns if c not in base_cols]
+
+df[base_cols + scenario_cols].to_csv(path / "test_df.csv", index=False)
