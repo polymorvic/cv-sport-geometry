@@ -1,11 +1,15 @@
 from __future__ import annotations
-import copy
-import numpy as np
-from typing import Literal, Self
-from .common import Hashable
-from .point import Point
-from .intersection import Intersection
 
+import copy
+from typing import Literal, Self
+
+import numpy as np
+
+from .common import Hashable
+from .intersection import Intersection
+from .point import Point
+
+type numeric = int | float
 
 class Line(Hashable):
     """
@@ -25,7 +29,7 @@ class Line(Hashable):
     """
     
 
-    def __init__(self, slope: float | None = None, intercept: float | None = None, xv: float | None = None):
+    def __init__(self, slope: float | None = None, intercept: float | None = None, xv: float | None = None) -> None:
         """
         Initializes a Line instance.
 
@@ -39,7 +43,7 @@ class Line(Hashable):
         self.xv = xv
 
 
-    def _key_(self):
+    def _key_(self) -> tuple[numeric, numeric, numeric | None]:
         """
         Returns a tuple of identifying attributes used for hashing and equality comparison.
 
@@ -49,7 +53,7 @@ class Line(Hashable):
         return (self.slope, self.intercept, self.xv)
 
     
-    def __repr__(self):
+    def __repr__(self) -> str:
         """
         Returns a string representation of the line.
 
@@ -59,7 +63,7 @@ class Line(Hashable):
         return f'y = {self.slope} * x + {self.intercept}'
     
 
-    def copy(self):
+    def copy(self) -> Line:
         """
         Creates a deep copy of the line.
 
@@ -82,7 +86,8 @@ class Line(Hashable):
             Intersection | None: The intersection object if the lines intersect within the image bounds,
             otherwise None.
         """
-        if (self.slope is not None and another_line.slope is not None and self.slope == another_line.slope) or (self.xv is not None and another_line.xv is not None):
+        if (self.slope is not None and another_line.slope is not None and self.slope == another_line.slope) \
+            or (self.xv is not None and another_line.xv is not None):
             return None
         
         elif self.xv is not None and another_line.xv is None:
@@ -104,10 +109,6 @@ class Line(Hashable):
             return None
     
 
-    def transform_to_another_coordinate_system(self, source_img: np.ndarray, dst_image: np.ndarray, offset: int) -> Self:
-        raise NotImplementedError
-        
-
     def y_for_x(self, x: int) -> int | None:
         """
         Calculates the y-coordinate on the line for a given x-coordinate.
@@ -128,7 +129,7 @@ class Line(Hashable):
         return int(self.slope * x + self.intercept)
     
 
-    def x_for_y(self, y):
+    def x_for_y(self, y: int) -> int | None:
         """
         Calculates the x-coordinate on the line for a given y-coordinate.
         It handles when line instance is vertical or horizontal.
@@ -294,7 +295,7 @@ class Line(Hashable):
         
 
     @classmethod
-    def from_hough_line(cls, hough_line: tuple[int, int, int, int]):
+    def from_hough_line(cls, hough_line: tuple[int, int, int, int]) -> Line:
         """
         Creates a Line instance from a Hough line segment represented by two points.
 

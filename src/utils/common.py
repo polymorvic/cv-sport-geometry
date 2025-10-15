@@ -1,11 +1,12 @@
 from abc import ABC, abstractmethod
 from collections.abc import Hashable as SupportsHash
 
+
 class Hashable(ABC):
 
     @abstractmethod
     def _key_(self) -> SupportsHash:
-        NotImplemented
+        raise NotImplementedError
 
 
     def __hash__(self) -> int:

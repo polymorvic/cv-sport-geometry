@@ -1,6 +1,8 @@
+from typing import Literal
+
 from pydantic import BaseModel, ConfigDict, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from typing import Literal
+
 
 class GroundTruthPoint(BaseModel):
     model_config = ConfigDict(strict=True)

@@ -1,15 +1,30 @@
-import numpy as np
 from collections import defaultdict
-from .lines import Line, Intersection, Point
-from .func import (traverse_line, find_net_lines, check_items_sign, transform_intersection, transform_line,
-                   is_court_corner, find_point_neighbourhood, is_inner_sideline, transform_point, group_lines, 
-                   get_further_outer_baseline_corner, get_closest_line, find_point_neighbourhood_simple,
-                   crop_court_field, image_to_lines, _plot_objs)
-from .const import SETTINGS
-
-import matplotlib.pyplot as plt
-import cv2
 from typing import Literal
+
+import cv2
+import numpy as np
+
+from .const import SETTINGS
+from .func import (
+    _plot_objs,
+    check_items_sign,
+    crop_court_field,
+    find_net_lines,
+    find_point_neighbourhood,
+    find_point_neighbourhood_simple,
+    get_closest_line,
+    get_further_outer_baseline_corner,
+    group_lines,
+    image_to_lines,
+    is_court_corner,
+    is_inner_sideline,
+    transform_intersection,
+    transform_line,
+    transform_point,
+    traverse_line,
+)
+from .lines import Intersection, Line, Point
+
 
 class CourtFinder:
     """
@@ -33,7 +48,11 @@ class CourtFinder:
     """
 
 
-    def __init__(self, intersections: list[Intersection], img: np.ndarray, corner_offset: int = 30, netline_offset: int = 20) -> None:
+    def __init__(self, 
+                 intersections: list[Intersection], 
+                 img: np.ndarray, 
+                 corner_offset: int = 30, 
+                 netline_offset: int = 20) -> None:
         """
         Initialize the CourtFinder with intersection data, image, and offset.
 
@@ -90,8 +109,9 @@ class CourtFinder:
                 continue
 
             nearest_intersection = None
-            for i, line in enumerate((intersect.line1, intersect.line2)):
-                sorted_intersection_points = sorted(self.line_intersection_mapping[line], key = lambda intersection: intersection.distance(intersect))
+            for _, line in enumerate((intersect.line1, intersect.line2)):
+                sorted_intersection_points = sorted(self.line_intersection_mapping[line], 
+                                                    key = lambda intersection: intersection.distance(intersect))
 
                 for inner_intersect in sorted_intersection_points:
 
@@ -103,12 +123,16 @@ class CourtFinder:
 
                 if nearest_intersection is not None:
 
-                    img_piece, *original_range = find_point_neighbourhood(intersect.point, self.corner_offset, self.img, line)
+                    img_piece, *original_range = find_point_neighbourhood(intersect.point, 
+                                                                          self.corner_offset, 
+                                                                          self.img, 
+                                                                          line)
 
                     if not is_court_corner(img_piece, intersect.point, original_range):
                         continue
                     
-                    net_intersection, closer_outer_baseline_point_used_line = self._find_closer_outer_netpoint(line, intersect.point)
+                    net_intersection, closer_outer_baseline_point_used_line = \
+                        self._find_closer_outer_netpoint(line, intersect.point)
 
                     if net_intersection is not None:
                         return intersect, net_intersection, closer_outer_baseline_point_used_line
@@ -165,16 +189,19 @@ class CourtFinder:
         return intersection_global, line
     
     
-    def find_further_outer_baseline_intersection(self, closer_outer_baseline_intersection: Intersection, used_line: Line, cannys_lower_thresh: int = 20, cannys_upper_thresh: int = 100, warmup: int = 5, offset: int = None) -> Intersection | None:
+    def find_further_outer_baseline_intersection(self, 
+                                                 closer_outer_baseline_intersection: Intersection, 
+                                                 used_line: Line, 
+                                                 cannys_lower_thresh: int = 20, 
+                                                 cannys_upper_thresh: int = 100, 
+                                                 warmup: int = 5, offset: int = None) -> Intersection | None:
         further_outer_baseline_intersection = None
         offset = self.netline_offset if not offset else offset
         point = closer_outer_baseline_intersection.point
         unused_line = closer_outer_baseline_intersection.other_line(used_line)
         i = 0
-        intersections = []
         while True:
             i += 1
-            stop = False
             new_point, img_piece, original_range = traverse_line(point, offset, self.img, unused_line)
             local_line = transform_line(unused_line, self.img, *original_range, False)
 
@@ -187,7 +214,9 @@ class CourtFinder:
             if i < warmup:
                 continue
 
-            further_outer_baseline_intersection = get_further_outer_baseline_corner(img_piece, local_line, cannys_lower_thresh, cannys_upper_thresh)
+            further_outer_baseline_intersection = get_further_outer_baseline_corner(img_piece, local_line, 
+                                                                                    cannys_lower_thresh, 
+                                                                                    cannys_upper_thresh)
 
             if further_outer_baseline_intersection:
                 break
@@ -197,23 +226,35 @@ class CourtFinder:
         return transform_intersection(further_outer_baseline_intersection, self.img, *original_range), local_line
 
 
-    def find_netline(self, closer_outer_netpoint: Point, baseline: Line, max_line_gap: int, cannys_thresh_lower: int = 50, cannys_thresh_upper: int = 150, hough_thresh: int = 100, min_line_len: int = 100) -> Line:
+    def find_netline(self, closer_outer_netpoint: Point, baseline: Line, 
+                     max_line_gap: int, cannys_thresh_lower: int = 50, 
+                     cannys_thresh_upper: int = 150, hough_thresh: int = 100, 
+                     min_line_len: int = 100) -> Line:
         pic_copy = self.img.copy()
         img_gray = cv2.cvtColor(pic_copy, cv2.COLOR_RGB2GRAY)
         inv_img_gray = 255 - img_gray
         edges = cv2.Canny(inv_img_gray, cannys_thresh_lower, cannys_thresh_upper)
 
-        lines = cv2.HoughLinesP(edges, 1, np.pi/180, threshold=hough_thresh, minLineLength=min_line_len, maxLineGap=max_line_gap)
+        lines = cv2.HoughLinesP(edges, 1, np.pi/180, threshold=hough_thresh, 
+                                minLineLength=min_line_len, maxLineGap=max_line_gap)
         lines = [] if lines is None else lines
             
         line_obj = [Line.from_hough_line(line[0]) for line in lines]
-        line_obj = [line for line in line_obj if line.slope is not None and np.sign(line.slope) == np.sign(baseline.slope)]
+        line_obj = [line for line in line_obj if line.slope is not None and \
+                    np.sign(line.slope) == np.sign(baseline.slope)]
 
         return get_closest_line(line_obj, closer_outer_netpoint)
     
 
-    def find_further_doubles_sideline(self, further_outer_baseline_point: Point, prev_local_line: Line, offset: int, extra_offset: int, bin_thresh: float, surface_type: str):
-        img_piece, *original_range = find_point_neighbourhood_simple(further_outer_baseline_point, offset + extra_offset, self.img, prev_local_line)
+    def find_further_doubles_sideline(self, 
+                                      further_outer_baseline_point: Point, 
+                                      prev_local_line: Line, offset: int, 
+                                      extra_offset: int, 
+                                      bin_thresh: float, 
+                                      surface_type: str) -> Line:
+        img_piece, *original_range = find_point_neighbourhood_simple(further_outer_baseline_point, 
+                                                                     offset + extra_offset, 
+                                                                     self.img, prev_local_line)
 
         SETTINGS.debug and _plot_objs(img_piece)
 
@@ -226,7 +267,8 @@ class CourtFinder:
             lines = [] if lines is None else lines
             
             line_obj = [Line.from_hough_line(line[0]) for line in lines]
-            line_obj = [line for line in line_obj if line.slope is not None and np.sign(line.slope) != np.sign(prev_local_line.slope)]
+            line_obj = [line for line in line_obj if line.slope is not None and \
+                        np.sign(line.slope) != np.sign(prev_local_line.slope)]
 
             
             local_point = transform_point(further_outer_baseline_point, *original_range, False)
@@ -243,7 +285,8 @@ class CourtFinder:
 
         bin_img = (img_gray > img_gray.max() * bin_thresh).astype(np.uint8)
         contours, hierarchy = cv2.findContours(bin_img, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-        filtered_contours = [con for con in contours if len(con) > 0 and (con[:, 0, 1].min() != 0 or con[:, 0, 0].min() != 0)]
+        filtered_contours = [con for con in contours if len(con) > 0 and \
+                             (con[:, 0, 1].min() != 0 or con[:, 0, 0].min() != 0)]
 
         if filtered_contours:
             areas = [cv2.contourArea(con) for con in filtered_contours]
@@ -285,105 +328,6 @@ class CourtFinder:
         return transform_line(line, self.img, *original_range)
 
 
-    # def scan_baseline(self, 
-    #                   baseline: Line, 
-    #                   netline: Line, 
-    #                   closer_outer_baseline_point: Point,
-    #                   further_outer_netpoint: Point,
-    #                   closer_outer_netpoint: Point,
-    #                   further_outer_baseline_point: Point,
-    #                   bin_thresh: float,
-    #                   cannys_lower_thresh: int,
-    #                   cannys_lower_upper: int,
-    #                   hough_max_line_gap: int,
-    #                   hough_thresh: int = 20,
-    #                   warmup: int = 2, 
-    #                   further_outer_baseline_point_tolerance: int = 3) -> tuple[Point, Point, Point, Point]:
-
-    #     new_point = closer_outer_baseline_point
-    #     baseline_points_max = []
-    #     baseline_points_min = []
-    #     i = 0
-    #     while True:
-    #         i += 1
-    #         new_point, img_piece, (origin_x, origin_y) = traverse_line(new_point, self.corner_offset, self.img, baseline, neighbourhood_type='simple')
-    #         pt_end = Point(origin_x + img_piece.shape[1], origin_y + img_piece.shape[0])
-    #         img_gray = cv2.cvtColor(img_piece, cv2.COLOR_RGB2GRAY)
-
-    #         if i <= warmup:
-    #             continue
-
-    #         bin_img = (img_gray > img_gray.max() * bin_thresh).astype(np.uint8) * 255
-
-    #         print(bin_img.max(), bin_img.min())
-
-    #         edges = cv2.Canny(bin_img, cannys_lower_thresh, cannys_lower_upper)
-    #         lines = cv2.HoughLinesP(edges, 1, np.pi/180, threshold=hough_thresh, minLineLength=self.corner_offset*0.5, maxLineGap=hough_max_line_gap)
-    #         lines = [] if lines is None else lines
-    #         line_obj = [Line.from_hough_line(line[0]) for line in lines]
-    #         line_obj = [line for line in line_obj if line.slope is not None and np.sign(line.slope) != np.sign(baseline.slope)]
-
-    #         grouped_lines = group_lines(line_obj)
-    #         print(f"groups len:   {len(grouped_lines)}")
-
-    #         # plt.imshow(edges)
-    #         # plt.show()
-
-    #         local_baseline = transform_line(baseline, self.img, origin_x, origin_y, False)
-
-    #         for line in grouped_lines:
-
-    #             for line_type in ('min', 'max'):
-    #                 local_line = line.get_line(line_type)
-    #                 global_line = transform_line(local_line, self.img, origin_x, origin_y)
-    #                 test_intersection = global_line.intersection(netline, self.img)
-
-    #                 if test_intersection is not None:
-    #                     test_intersection_point = test_intersection.point
-    #                 else:
-    #                     continue
-
-    #                 if closer_outer_netpoint.x < test_intersection_point.x < further_outer_netpoint.x or closer_outer_netpoint.x > test_intersection_point.x > further_outer_netpoint.x:
-    #                     baseline_intersection_point = global_line.intersection(baseline, self.img).point
-
-    #                     local_intersection = local_line.intersection(local_baseline, img_piece)
-
-
-    #                     if (local_intersection is not None) and not (baseline_intersection_point.x - further_outer_baseline_point_tolerance < further_outer_baseline_point.x < baseline_intersection_point.x + further_outer_baseline_point_tolerance and further_outer_baseline_point.y - further_outer_baseline_point_tolerance < baseline_intersection_point.y < further_outer_baseline_point.y + further_outer_baseline_point_tolerance):
-
-    #                         if line_type == 'min':
-    #                             print('min linetype')
-    #                             baseline_points_min.append((baseline_intersection_point, test_intersection_point))
-    #                         else:
-    #                             print('max linetype')
-    #                             baseline_points_max.append((baseline_intersection_point, test_intersection_point))
-
-
-    #         img_copy = img_piece.copy()
-    #         for line in grouped_lines:
-    #             # x1, y1, x2, y2 = line[0]
-    #             # cv2.line(img_copy, (x1, y1), (x2, y2), (0, 255, 0), 2)
-    #             pts = line.limit_to_img(img_copy)
-    #             pts_base = local_baseline.limit_to_img(img_copy)
-    #             cv2.line(img_copy, *pts, (255, 0,0), 1)
-    #             cv2.line(img_copy, *pts_base, (0, 255, 0), 1)
-
-    #         # plt.imshow(img_copy)
-    #         # plt.show()
-
-
-    #         if further_outer_baseline_point.is_in_area(Point(origin_x, origin_y), pt_end):
-    #             break
-
-    #     closer_inner_baseline_point = baseline_points_min[0][0]
-    #     closer_inner_netpoint = baseline_points_min[0][1]
-
-    #     further_inner_baseline_point = baseline_points_max[-1][0]
-    #     further_inner_netpoint = baseline_points_max[-1][1]
-
-    #     return closer_inner_baseline_point, further_inner_baseline_point, closer_inner_netpoint, further_inner_netpoint
-    
-
     def scan_endline(self, 
                     baseline: Line, 
                     netline: Line, 
@@ -422,7 +366,8 @@ class CourtFinder:
         i = 0
         while True:
             i += 1
-            new_point, img_piece, (origin_x, origin_y) = traverse_line(new_point, self.corner_offset, self.img, endline, neighbourhood_type='simple')
+            new_point, img_piece, (origin_x, origin_y) = traverse_line(new_point, self.corner_offset, self.img, 
+                                                                       endline, neighbourhood_type='simple')
             pt_end = Point(origin_x + img_piece.shape[1], origin_y + img_piece.shape[0])
 
             if i <= warmup:
@@ -441,10 +386,12 @@ class CourtFinder:
 
 
             edges = cv2.Canny(bin_img, cannys_lower_thresh, cannys_lower_upper)
-            lines = cv2.HoughLinesP(edges, 1, np.pi/180, threshold=hough_thresh, minLineLength=self.corner_offset*0.5, maxLineGap=hough_max_line_gap)
+            lines = cv2.HoughLinesP(edges, 1, np.pi/180, threshold=hough_thresh, 
+                                    minLineLength=self.corner_offset*0.5, maxLineGap=hough_max_line_gap)
             lines = [] if lines is None else lines
             line_obj = [Line.from_hough_line(line[0]) for line in lines]
-            line_obj = [line for line in line_obj if line.slope is not None and np.sign(line.slope) != np.sign(endline.slope)]
+            line_obj = [line for line in line_obj if line.slope is not None and \
+                        np.sign(line.slope) != np.sign(endline.slope)]
 
             grouped_lines = group_lines(line_obj)
 
@@ -464,13 +411,20 @@ class CourtFinder:
                     else:
                         continue
 
-                    if closer_outer_netpoint.x < test_intersection_point.x < further_outer_netpoint.x or closer_outer_netpoint.x > test_intersection_point.x > further_outer_netpoint.x:
+                    if closer_outer_netpoint.x < test_intersection_point.x < further_outer_netpoint.x or \
+                        closer_outer_netpoint.x > test_intersection_point.x > further_outer_netpoint.x:
                         endline_intersection_point = global_line.intersection(endline, self.img).point
 
                         local_intersection = local_line.intersection(local_endline, img_piece)
 
 
-                        if (local_intersection is not None) and not (endline_intersection_point.x - further_outer_endline_point_tolerance < further_outer_point.x < endline_intersection_point.x + further_outer_endline_point_tolerance and further_outer_point.y - further_outer_endline_point_tolerance < endline_intersection_point.y < further_outer_point.y + further_outer_endline_point_tolerance):
+                        if (local_intersection is not None) and not \
+                            (endline_intersection_point.x - further_outer_endline_point_tolerance < \
+                                further_outer_point.x < \
+                                endline_intersection_point.x + further_outer_endline_point_tolerance and \
+                                further_outer_point.y - further_outer_endline_point_tolerance < \
+                                endline_intersection_point.y < \
+                                further_outer_point.y + further_outer_endline_point_tolerance):
 
                             if line_type == 'min':
                                 endline_points_min.append((endline_intersection_point, test_intersection_point))
@@ -480,8 +434,6 @@ class CourtFinder:
 
             img_copy = img_piece.copy()
             for line in grouped_lines:
-                # x1, y1, x2, y2 = line[0]
-                # cv2.line(img_copy, (x1, y1), (x2, y2), (0, 255, 0), 2)
                 pts = line.limit_to_img(img_copy)
                 pts_base = local_endline.limit_to_img(img_copy)
                 cv2.line(img_copy, *pts, (255, 0,0), 1)
@@ -497,55 +449,6 @@ class CourtFinder:
 
         return closer_inner_endline_point, further_inner_endline_point
     
-
-
-    # def find_service_points(self, 
-    #                         inner_baseline_point: Point,
-    #                         inner_netline_point: Point,
-    #                         inner_sideline: Line,
-    #                         opposite_inner_sideline: Line,
-    #                         offset: int,
-    #                         bin_thresh: float,
-    #                         cannys_lower_thresh: int,
-    #                         cannys_lower_upper: int,
-    #                         hough_max_line_gap: int,
-    #                         hough_thresh:int,
-    #                         warmup: int = 5):
-        
-
-    #     i = 0
-    #     new_point = inner_baseline_point
-    #     while True:
-    #         i += 1
-    #         new_point, img_piece, (origin_x, origin_y) = traverse_line(new_point, self.corner_offset, self.img, inner_sideline, neighbourhood_type='simple')
-
-    #         if i <= warmup:
-    #             continue
-
-    #         img_gray = cv2.cvtColor(img_piece, cv2.COLOR_RGB2GRAY)
-    #         bin_img = (img_gray > img_gray.max() * bin_thresh).astype(np.uint8) * 255
-    #         edges = cv2.Canny(bin_img, cannys_lower_thresh, cannys_lower_upper)
-    #         lines = cv2.HoughLinesP(edges, 1, np.pi/180, threshold=hough_thresh, minLineLength=self.corner_offset*0.5, maxLineGap=hough_max_line_gap)
-    #         lines = [] if lines is None else lines
-    #         line_obj = [Line.from_hough_line(line[0]) for line in lines]
-    #         line_obj = [line for line in line_obj if line.slope is not None and np.sign(line.slope) != np.sign(inner_sideline.slope)]
-    #         grouped_lines = group_lines(line_obj)
-
-    #         local_inner_sideline = transform_line(inner_sideline, self.img, origin_x, origin_y, to_global=False)
-    #         piece_copy = img_piece.copy()
-    #         for line in grouped_lines:
-    #             pts = line.limit_to_img(img_piece)
-    #             try:
-    #                 pts_inner = local_inner_sideline.limit_to_img(img_piece)
-    #                 cv2.line(piece_copy, *pts_inner, (255, 0, 0))
-    #             except ValueError:
-    #                 pass
-
-    #             cv2.line(piece_copy, *pts, (255, 0, 0))
-
-    #         plt.imshow(piece_copy)
-    #         plt.show()
-
 
     def find_net_service_point_centre_service_line(self, 
                             closer_outer_baseline_point: Point,
@@ -569,14 +472,28 @@ class CourtFinder:
                             hough_thresh: int = 100,
                             margin: int = 10,
                             same_slope_sign: bool = False
-                            ):
+                            ) -> tuple[Point, Line]:
         
 
-        img_piece, *origin = crop_court_field(self.img, baseline, closer_outer_baseline_point, closer_outer_netline_point, further_outer_baseline_point, further_outer_netline_point)
-        grouped_lines = image_to_lines(img_piece, bin_thresh, cannys_lower_thresh, cannys_upper_thresh, hough_thresh, self.corner_offset * min_line_len_ratio, hough_max_line_gap, baseline, same_slope_sign)
+        img_piece, *origin = crop_court_field(self.img, 
+                                              baseline, 
+                                              closer_outer_baseline_point, 
+                                              closer_outer_netline_point, 
+                                              further_outer_baseline_point, 
+                                              further_outer_netline_point)
+        grouped_lines = image_to_lines(img_piece, 
+                                       bin_thresh, 
+                                       cannys_lower_thresh, 
+                                       cannys_upper_thresh, 
+                                       hough_thresh, 
+                                       self.corner_offset * min_line_len_ratio, 
+                                       hough_max_line_gap, 
+                                       baseline, 
+                                       same_slope_sign)
 
         global_grouped_lines = [transform_line(line, self.img, *origin) for line in grouped_lines]
-        global_grouped_lines = [line for line in global_grouped_lines if not (line.check_point_on_line(closer_outer_baseline_point, 30) or 
+        global_grouped_lines = [line for line in global_grouped_lines if not \
+                                (line.check_point_on_line(closer_outer_baseline_point, 30) or 
                                 line.check_point_on_line(closer_outer_netline_point, 30) or
                                 line.check_point_on_line(further_outer_baseline_point, 30) or
                                 line.check_point_on_line(further_outer_netline_point, 30) or
@@ -594,18 +511,23 @@ class CourtFinder:
 
         for line in global_grouped_lines:
 
-            if (net_inter := line.intersection(netline, self.img)) is not None and (base_inter := line.intersection(baseline, self.img)) is not None:
+            if (net_inter := line.intersection(netline, self.img)) is not None and \
+                (base_inter := line.intersection(baseline, self.img)) is not None:
                 
                 slope_positive = baseline.slope > 0
                 
                 netline_condition = (
-                    (slope_positive and further_inner_netline_point.x + margin < net_inter.point.x < closer_inner_netline_point.x - margin) or
-                    (not slope_positive and closer_inner_netline_point.x + margin < net_inter.point.x < further_inner_netline_point.x - margin)
+                    (slope_positive and further_inner_netline_point.x + margin < \
+                        net_inter.point.x < closer_inner_netline_point.x - margin) or
+                    (not slope_positive and closer_inner_netline_point.x + margin < \
+                        net_inter.point.x < further_inner_netline_point.x - margin)
                 )
 
                 baseline_condition = (
-                    (slope_positive and further_inner_baseline_point.x + margin < base_inter.point.x < closer_inner_baseline_point.x - margin) or
-                    (not slope_positive and closer_inner_baseline_point.x + margin < base_inter.point.x < further_inner_baseline_point.x - margin)
+                    (slope_positive and further_inner_baseline_point.x + margin < \
+                        base_inter.point.x < closer_inner_baseline_point.x - margin) or
+                    (not slope_positive and closer_inner_baseline_point.x + margin < \
+                        base_inter.point.x < further_inner_baseline_point.x - margin)
                 )
 
                 if SETTINGS.debug:
@@ -644,21 +566,31 @@ class CourtFinder:
                     min_line_len_ratio: float,
                     hough_thresh: int = 100,
                     margin: int = 10
-                    ):
+                    ) -> tuple[Point, Point, Point]:
         
-        img_piece, *origin = crop_court_field(self.img, baseline, closer_outer_baseline_point, closer_outer_netline_point, further_outer_baseline_point, further_outer_netline_point)
-        grouped_lines = image_to_lines(img_piece, bin_thresh, cannys_lower_thresh, cannys_upper_thresh, hough_thresh, self.corner_offset * min_line_len_ratio, hough_max_line_gap, closer_inner_sideline)
+        img_piece, *origin = crop_court_field(self.img, baseline, 
+                                              closer_outer_baseline_point, 
+                                              closer_outer_netline_point, 
+                                              further_outer_baseline_point,
+                                              further_outer_netline_point)
+        grouped_lines = image_to_lines(img_piece, bin_thresh, 
+                                       cannys_lower_thresh, 
+                                       cannys_upper_thresh, 
+                                       hough_thresh, 
+                                       self.corner_offset * min_line_len_ratio, 
+                                       hough_max_line_gap, closer_inner_sideline)
         
 
         global_grouped_lines = [transform_line(line, self.img, *origin) for line in grouped_lines]
-        global_grouped_lines = [line for line in global_grouped_lines if not (line.check_point_on_line(closer_outer_baseline_point, 30) or 
-                                                                              line.check_point_on_line(closer_outer_netline_point, 30) or
-                                                                              line.check_point_on_line(further_outer_baseline_point, 30) or
-                        line.check_point_on_line(further_outer_netline_point, 30) or
-                        line.check_point_on_line(closer_inner_baseline_point, 30) or 
-                        line.check_point_on_line(further_inner_baseline_point, 30) or 
-                        line.check_point_on_line(closer_inner_netline_point, 30) or
-                        line.check_point_on_line(further_inner_netline_point, 30))]
+        global_grouped_lines = [line for line in global_grouped_lines if not \
+                                (line.check_point_on_line(closer_outer_baseline_point, 30) or 
+                                 line.check_point_on_line(closer_outer_netline_point, 30) or
+                                 line.check_point_on_line(further_outer_baseline_point, 30) or
+                                 line.check_point_on_line(further_outer_netline_point, 30) or
+                                 line.check_point_on_line(closer_inner_baseline_point, 30) or 
+                                 line.check_point_on_line(further_inner_baseline_point, 30) or 
+                                 line.check_point_on_line(closer_inner_netline_point, 30) or
+                                 line.check_point_on_line(further_inner_netline_point, 30))]
 
         if SETTINGS.debug:
             img_copy = self.img.copy()
@@ -670,18 +602,23 @@ class CourtFinder:
 
         for line in global_grouped_lines:
 
-            if (closer_inter := line.intersection(closer_inner_sideline, self.img)) is not None and (further_inter := line.intersection(further_inner_sideline, self.img)) is not None:
+            if (closer_inter := line.intersection(closer_inner_sideline, self.img)) is not None and \
+                (further_inter := line.intersection(further_inner_sideline, self.img)) is not None:
                 
                 slope_positive = closer_inner_sideline.slope > 0
                 
                 closer_line_condition = (
-                    (slope_positive and closer_inner_netline_point.x + margin < closer_inter.point.x < closer_inner_baseline_point.x - margin) or
-                    (not slope_positive and closer_inner_baseline_point.x + margin < closer_inter.point.x < closer_inner_netline_point.x - margin)
+                    (slope_positive and closer_inner_netline_point.x + margin < \
+                        closer_inter.point.x < closer_inner_baseline_point.x - margin) or
+                    (not slope_positive and closer_inner_baseline_point.x + margin < \
+                        closer_inter.point.x < closer_inner_netline_point.x - margin)
                 )
 
                 further_line_condition = (
-                    (slope_positive and further_inner_netline_point.x + margin < further_inter.point.x < further_inner_baseline_point.x - margin) or
-                    (not slope_positive and further_inner_baseline_point.x + margin < further_inter.point.x < further_inner_netline_point.x - margin)
+                    (slope_positive and further_inner_netline_point.x + margin < \
+                        further_inter.point.x < further_inner_baseline_point.x - margin) or
+                    (not slope_positive and further_inner_baseline_point.x + margin < \
+                        further_inter.point.x < further_inner_netline_point.x - margin)
                 )
 
                 if closer_line_condition and further_line_condition:

@@ -1,22 +1,37 @@
-import os
-import cv2
-import random
-import json
 import colorsys
-import numpy as np
-from pydantic import BaseModel, ValidationError, TypeAdapter
-from PIL import Image
+import json
+import os
+import random
 from pathlib import Path
-from skimage.morphology import skeletonize
-from typing import Literal, Iterable, Optional
-from .lines import Line, LineGroup, Point, Intersection
-from .schemas import GroundTruthCourtPoints
-from .const import ARRAY_X_INDEX, ARRAY_Y_INDEX, WIDTH, LENGTH, DIST_FROM_BASELINE, DIST_OUTER_SIDELINE, COURT_LENGTH_HALF, COURT_WIDTH_HALF, SETTINGS
-import matplotlib.pyplot as plt
+from typing import Iterable, Literal
 
-def _plot_objs(*objs) -> None:
+import cv2
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+from PIL import Image
+from pydantic import BaseModel, TypeAdapter, ValidationError
+from skimage.morphology import skeletonize
+
+from .const import (
+    ARRAY_X_INDEX,
+    ARRAY_Y_INDEX,
+    COURT_LENGTH_HALF,
+    COURT_WIDTH_HALF,
+    DIST_FROM_BASELINE,
+    DIST_OUTER_SIDELINE,
+    LENGTH,
+    SETTINGS,
+    WIDTH,
+)
+from .lines import Intersection, Line, LineGroup, Point
+from .schemas import GroundTruthCourtPoints
+
+
+def _plot_objs(*objs: np.ndarray) -> None:
     for obj in objs:
-        plt.imshow(obj); plt.show() 
+        plt.imshow(obj)
+        plt.show() 
 
 
 def get_pictures(path: str) -> dict[str, list[np.ndarray]]:
@@ -35,7 +50,8 @@ def get_pictures(path: str) -> dict[str, list[np.ndarray]]:
         }       
     """
     valid_extensions = {'.jpg', '.jpeg', '.png', '.webp'}
-    filenames = sorted([f for f in os.listdir(path) if os.path.isfile(os.path.join(path, f)) and os.path.splitext(f)[1].lower() in valid_extensions])
+    filenames = sorted([f for f in os.listdir(path) if os.path.isfile(os.path.join(path, f))\
+                         and os.path.splitext(f)[1].lower() in valid_extensions])
 
     pics = {
         'rgb': [],
@@ -57,7 +73,13 @@ def get_pictures(path: str) -> dict[str, list[np.ndarray]]:
     return pics
 
 
-def apply_hough_transformation(img_rgb: np.ndarray, blur_kernel_size: int = 5, canny_thresh_lower: int = 50, canny_thresh_upper: int = 150, hough_thresh: int = 100, hough_min_line_len: int = 100, hough_max_line_gap: int = 10) -> tuple[np.ndarray, list]:
+def apply_hough_transformation(img_rgb: np.ndarray, 
+                               blur_kernel_size: int = 5, 
+                               canny_thresh_lower: int = 50, 
+                               canny_thresh_upper: int = 150,
+                               hough_thresh: int = 100, 
+                               hough_min_line_len: int = 100, 
+                               hough_max_line_gap: int = 10) -> tuple[np.ndarray, list]:
     """
     It applies probabilistic Hough line transformation to given RGB image
     process of applying hough transformation to the image is as follows:
@@ -68,19 +90,25 @@ def apply_hough_transformation(img_rgb: np.ndarray, blur_kernel_size: int = 5, c
         - on the binary image that contains the detected edges Hough transformation is processed to get lines,
             if any detected, it contains two points - both ends of line, between them we can plot strainght line
 
-    In HoughLinesP function - constant values of 1 and np.pi/180 indicates respectively rho and theta parameters that dont need to be tuned
+    In HoughLinesP function - constant values of 1 and np.pi/180 indicates 
+        respectively rho and theta parameters that dont need to be tuned
 
     Args:
         img_rgb (np.ndarray): an RGB image
         blur_kernel_size (int, optional): size of square blur kernel. Defaults to 5.
         canny_thresh_lower (int, optional): lower threshold for the hysteresis process in Canny. Defaults to 50.
         canny_thresh_upper (int, optional): upper thresholds for the hysteresis process in Canny. Defaults to 150.
-        hough_thresh (int, optional): minimum number of intersections (votes) in the accumulator to "declare" a line - the higher value the fewer lines, only strong ones. Defaults to 100.
-        hough_min_line_len (int, optional): the minimum length (in pixels) of a line segment to be accepted, short segments below this length are ignored. Defaults to 100.
-        hough_max_line_gap (int, optional): the maximum allowed gap between two line segments to treat them as a single line, if endpoints of two segments are close enough (within this gap), they are joined into one line. Defaults to 10.
+        hough_thresh (int, optional): minimum number of intersections (votes) in 
+            the accumulator to "declare" a line - the higher value the fewer lines, only strong ones. Defaults to 100.
+        hough_min_line_len (int, optional): the minimum length (in pixels) of a 
+            line segment to be accepted, short segments below this length are ignored. Defaults to 100.
+        hough_max_line_gap (int, optional): the maximum allowed gap between two 
+            line segments to treat them as a single line, if endpoints of two 
+            segments are close enough (within this gap), they are joined into one line. Defaults to 10.
 
     Returns:
-        tuple[np.ndarray, list]: image with detected lines drawn, list of lists of 4 integers each item - that indicates both ends of detected lines 
+        tuple[np.ndarray, list]: image with detected lines drawn, 
+        list of lists of 4 integers each item - that indicates both ends of detected lines 
     """
     img_copy = img_rgb.copy()
     img_gray = cv2.cvtColor(img_rgb, cv2.COLOR_RGB2GRAY)
@@ -88,7 +116,8 @@ def apply_hough_transformation(img_rgb: np.ndarray, blur_kernel_size: int = 5, c
     blurred = cv2.GaussianBlur(img_gray, (blur_kernel_size, blur_kernel_size), 0)
     edges = cv2.Canny(blurred, canny_thresh_lower, canny_thresh_upper)
 
-    lines = cv2.HoughLinesP(edges, 1, np.pi/180, threshold=hough_thresh, minLineLength=hough_min_line_len, maxLineGap=hough_max_line_gap)
+    lines = cv2.HoughLinesP(edges, 1, np.pi/180, threshold=hough_thresh, 
+                            minLineLength=hough_min_line_len, maxLineGap=hough_max_line_gap)
     if lines is None:
         lines = []
         
@@ -99,7 +128,9 @@ def apply_hough_transformation(img_rgb: np.ndarray, blur_kernel_size: int = 5, c
     return img_copy, lines
 
 
-def group_lines(lines: list[Line], thresh_theta: float | int = 5, thresh_intercept: float | int = 10) -> list[LineGroup]:
+def group_lines(lines: list[Line], 
+                thresh_theta: float | int = 5, 
+                thresh_intercept: float | int = 10) -> list[LineGroup]:
     """
     Group similar Line objects into LineGroups based on orientation and position thresholds.
 
@@ -123,7 +154,10 @@ def group_lines(lines: list[Line], thresh_theta: float | int = 5, thresh_interce
     return groups
 
 
-def draw_line_group(img: np.ndarray, line_group: LineGroup, color: tuple[int, int, int], approx_color: tuple[int, int, int], approx_only: bool = True) -> np.ndarray:
+def draw_line_group(img: np.ndarray, line_group: LineGroup, 
+                    color: tuple[int, int, int], 
+                    approx_color: tuple[int, int, int], 
+                    approx_only: bool = True) -> np.ndarray:
     """
     Draw a LineGroup on an image.
 
@@ -332,7 +366,13 @@ def _unit_tangent(line: Line) -> tuple[float, float]:
     return (dx / norm, dy / norm)
 
 
-def traverse_line(point: Point, offset: int, img: np.ndarray, line: Line, direction: Literal["up", "down"] = "up", neighbourhood_type: Literal['complex', 'simple'] = 'complex') -> tuple[Point, np.ndarray, list[int, int]]:
+def traverse_line(point: Point, 
+                  offset: int, 
+                  img: np.ndarray, 
+                  line: Line, 
+                  direction: Literal["up", "down"] = "up", 
+                  neighbourhood_type: Literal['complex', 'simple'] = 'complex')\
+                    -> tuple[Point, np.ndarray, list[int, int]]:
     """
     Traverse along a given line from a starting point by a fixed offset, 
     returning the next point in the specified direction, the extracted 
@@ -401,12 +441,15 @@ def traverse_line(point: Point, offset: int, img: np.ndarray, line: Line, direct
     return new_point, img_piece, global_origin
 
 
-def find_net_lines(img_piece: np.ndarray, cannys_thresh_lower: int = 50, cannys_thresh_upper: int = 150, hough_thresh: int = 10, min_line_len: int = 10, max_line_gap:int = 10):
+def find_net_lines(img_piece: np.ndarray, cannys_thresh_lower: int = 50, 
+                   cannys_thresh_upper: int = 150, hough_thresh: int = 10, 
+                   min_line_len: int = 10, max_line_gap:int = 10) -> list[LineGroup]:
     piece_gray = cv2.cvtColor(img_piece, cv2.COLOR_RGB2GRAY)
     neg_gray_img = 255 - piece_gray
     edges = cv2.Canny(neg_gray_img, cannys_thresh_lower, cannys_thresh_upper)
 
-    lines = cv2.HoughLinesP(edges, 1, np.pi/180, threshold=hough_thresh, minLineLength=min_line_len, maxLineGap=max_line_gap)
+    lines = cv2.HoughLinesP(edges, 1, np.pi/180, threshold=hough_thresh, 
+                            minLineLength=min_line_len, maxLineGap=max_line_gap)
     if lines is None:
         lines = []
     
@@ -426,7 +469,8 @@ def check_items_sign(line_groups: list[LineGroup]) -> bool:
     return all(item.slope > 0 for item in line_groups) or all(item.slope < 0 for item in line_groups)
 
 
-def transform_point(point: Intersection | Point, original_x_start: int, original_y_start: int, to_global: bool = True) -> Point:
+def transform_point(point: Intersection | Point, original_x_start: int, 
+                    original_y_start: int, to_global: bool = True) -> Point:
     if isinstance(point, Intersection):
         point = point.point
 
@@ -436,13 +480,15 @@ def transform_point(point: Intersection | Point, original_x_start: int, original
         return Point(point.x - original_x_start, point.y - original_y_start)
 
 
-def transform_line(original_line: Line, original_img: np.ndarray, original_x_start: int, original_y_start: int, to_global: bool = True) -> Line:
+def transform_line(original_line: Line, original_img: np.ndarray, 
+                   original_x_start: int, original_y_start: int, to_global: bool = True) -> Line:
     pts_source: Iterable[Point] = original_line.limit_to_img(original_img)
     pts_transformed = [transform_point(p, original_x_start, original_y_start, to_global=to_global) for p in pts_source]
     return Line.from_points(*pts_transformed)
 
 
-def transform_intersection(intersection: Intersection, source_img: np.ndarray, original_x_start: int, original_y_start: int, to_global: bool = True) -> Intersection:
+def transform_intersection(intersection: Intersection, source_img: np.ndarray, 
+                           original_x_start: int, original_y_start: int, to_global: bool = True) -> Intersection:
     """
     Transforms an Intersection in one go.
     - If to_global=True: treats inputs as LOCAL and returns GLOBAL.
@@ -473,7 +519,8 @@ def _count_array_sequence_group(arr: np.ndarray) -> int:
     return counter
 
 
-def is_court_corner(img: np.ndarray, intersect_point: Point, original_range: tuple[int, int], bin_thresh: float = 0.8, x_range: int = 3, y_range: int = 3) -> bool:
+def is_court_corner(img: np.ndarray, intersect_point: Point, original_range: tuple[int, int], 
+                    bin_thresh: float = 0.8, x_range: int = 3, y_range: int = 3) -> bool:
 
     gray = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
     bin_img = (gray > gray.max() * bin_thresh).astype(np.uint8)
@@ -482,7 +529,8 @@ def is_court_corner(img: np.ndarray, intersect_point: Point, original_range: tup
     closed_bin_img = cv2.morphologyEx(bin_img, cv2.MORPH_CLOSE, kernel)
 
     local_intersect_point = transform_point(intersect_point, *original_range, False)
-    if np.sum(closed_bin_img[local_intersect_point.y - y_range: local_intersect_point.y + y_range, local_intersect_point.x - x_range: local_intersect_point.x + x_range]) == 0:
+    if np.sum(closed_bin_img[local_intersect_point.y - y_range: local_intersect_point.y + y_range, 
+                             local_intersect_point.x - x_range: local_intersect_point.x + x_range]) == 0:
         return False
     
     img_copy = img.copy()
@@ -537,17 +585,16 @@ def angle_between_lines(line1: Line, line2: Line) -> float | None:
     return np.degrees(np.arctan(tan_theta))
 
 
-def is_inner_sideline(img: np.ndarray, bin_thresh: float = 0.8, hough_line_thresh: int = 8, min_line_len: int | None = 5 , min_line_gap: int = 5) -> bool:
+def is_inner_sideline(img: np.ndarray, bin_thresh: float = 0.8, hough_line_thresh: int = 8, 
+                      min_line_len: int | None = 5 , min_line_gap: int = 5) -> bool:
 
     gray = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
     bin_img = (gray > gray.max() * bin_thresh).astype(np.uint8)
 
-    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (9, 9))
-    # closed_bin_img = cv2.morphologyEx(bin_img, cv2.MORPH_CLOSE, kernel)
-
     skel = skeletonize(bin_img).astype(np.uint8)
 
-    lines = cv2.HoughLinesP(skel, 1, np.pi/180, threshold=hough_line_thresh, minLineLength=min_line_len, maxLineGap=min_line_gap)
+    lines = cv2.HoughLinesP(skel, 1, np.pi/180, threshold=hough_line_thresh, 
+                            minLineLength=min_line_len, maxLineGap=min_line_gap)
     if lines is None:
         lines = []
             
@@ -577,7 +624,7 @@ def transform_annotation(img: np.ndarray, annotation: dict[Literal['x', 'y'], fl
     return Point(x, y)
 
 
-def fill_edges_image(edges_img: np.ndarray):
+def fill_edges_image(edges_img: np.ndarray) -> np.ndarray:
     h, w = edges_img.shape
     filled = np.zeros_like(edges_img)
 
@@ -596,7 +643,7 @@ def _select_intersection_by_x(intersections: list[Intersection], local_line: Lin
     if not intersections:
         return None
 
-    def x_of(inter: Intersection):
+    def x_of(inter: Intersection) -> int:
         p = inter.point
         return p.x if hasattr(p, "x") else p[0]
 
@@ -609,13 +656,20 @@ def _select_intersection_by_x(intersections: list[Intersection], local_line: Lin
     return intersections[0] if slope > 0 else intersections[-1]
 
 
-def get_further_outer_baseline_corner(img: np.ndarray, local_line: Line, cannys_thresh_lower: int, cannys_thresh_upper: int, hough_thresh: int = 10, min_line_len: int = 10, max_line_gap: int = 10) -> Intersection:
+def get_further_outer_baseline_corner(img: np.ndarray, 
+                                      local_line: Line, 
+                                      cannys_thresh_lower: int, 
+                                      cannys_thresh_upper: int, 
+                                      hough_thresh: int = 10, 
+                                      min_line_len: int = 10,
+                                      max_line_gap: int = 10) -> Intersection:
 
     img_piece_gray = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
     edges = cv2.Canny(img_piece_gray, cannys_thresh_lower, cannys_thresh_upper)
     filled_edges = fill_edges_image(edges)
 
-    lines = cv2.HoughLinesP(edges, 1, np.pi/180, threshold=hough_thresh, minLineLength=min_line_len, maxLineGap=max_line_gap)
+    lines = cv2.HoughLinesP(edges, 1, np.pi/180, threshold=hough_thresh, 
+                            minLineLength=min_line_len, maxLineGap=max_line_gap)
     if lines is None:
         lines = []
 
@@ -659,7 +713,11 @@ def get_further_outer_baseline_corner(img: np.ndarray, local_line: Line, cannys_
             skip_line = False
 
             sequence = []
-            analyze_line = intersection.line1 if np.sign(intersection.line1.slope) == np.sign(local_line.slope) else intersection.line2
+            if np.sign(intersection.line1.slope) == np.sign(local_line.slope):
+                analyze_line = intersection.line1 
+            else:
+                analyze_line = intersection.line2
+
             for col in col_range:
                 row = analyze_line.y_for_x(col)
                 if row >= 0:
@@ -669,7 +727,9 @@ def get_further_outer_baseline_corner(img: np.ndarray, local_line: Line, cannys_
                         sequence.append(seq_num)
                         sequence.append(seq_num)
 
-            if not (all(x == 0 for x in sequence) or (local_line.slope > 0 and sequence[0] == 0 and sequence[-1] == 1) or (local_line.slope < 0 and sequence[0] == 1 and sequence[-1] == 0)):
+            if not (all(x == 0 for x in sequence) or \
+                    (local_line.slope > 0 and sequence[0] == 0 and sequence[-1] == 1) or \
+                    (local_line.slope < 0 and sequence[0] == 1 and sequence[-1] == 0)):
                 skip_line = True
 
             if skip_line:
@@ -681,7 +741,7 @@ def get_further_outer_baseline_corner(img: np.ndarray, local_line: Line, cannys_
     return _select_intersection_by_x(intersections, local_line)
 
 
-def get_closest_line(lines, point):
+def get_closest_line(lines: list[Line], point: Point) -> Line:
     """Find the line closest to a point."""
     x, y = point
     min_dist = float('inf')
@@ -771,7 +831,12 @@ def find_point_neighbourhood_simple_no_line(point: Point, size: int, img: np.nda
     return img[y_start:y_end+1, x_start:x_end+1], x_start, y_start
 
 
-def crop_court_field(image: np.ndarray, baseline: Line, closer_outer_baseline_point: Point, closer_outer_netline_point: Point, further_outer_baseline_point: Point, further_outer_netline_point: Point,) -> np.ndarray:
+def crop_court_field(image: np.ndarray, 
+                     baseline: Line, 
+                     closer_outer_baseline_point: Point, 
+                     closer_outer_netline_point: Point, 
+                     further_outer_baseline_point: Point, 
+                     further_outer_netline_point: Point,) -> np.ndarray:
     
     x_start, x_end, y_start, y_end = {
         True: (
@@ -791,25 +856,37 @@ def crop_court_field(image: np.ndarray, baseline: Line, closer_outer_baseline_po
     return image[y_start:y_end, x_start:x_end], x_start, y_start
 
 
-def image_to_lines(image: np.ndarray, bin_thresh: float, cannys_lower_thresh: int, cannys_upper_thresh: int, hough_thresh: int, min_line_len: float, hough_max_line_gap: int, reference_line: Line, same_slope_sign: bool = False) -> list[LineGroup]:
+def image_to_lines(image: np.ndarray, 
+                   bin_thresh: float, 
+                   cannys_lower_thresh: int, 
+                   cannys_upper_thresh: int, 
+                   hough_thresh: int, 
+                   min_line_len: float, 
+                   hough_max_line_gap: int, 
+                   reference_line: Line, 
+                   same_slope_sign: bool = False) -> list[LineGroup]:
     img_gray = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
     bin_img = (img_gray > img_gray.max() * bin_thresh).astype(np.uint8) * 255
     edges = cv2.Canny(bin_img, cannys_lower_thresh, cannys_upper_thresh)
 
     SETTINGS.debug and _plot_objs(edges)
 
-    lines = cv2.HoughLinesP(edges, 1, np.pi/180, threshold=hough_thresh, minLineLength=min_line_len, maxLineGap=hough_max_line_gap)
+    lines = cv2.HoughLinesP(edges, 1, np.pi/180, threshold=hough_thresh, 
+                            minLineLength=min_line_len, maxLineGap=hough_max_line_gap)
     lines = [] if lines is None else lines
     
     ref_sign = np.sign(reference_line.slope)
     cmp = (lambda a, b: a == b) if same_slope_sign else (lambda a, b: a != b)
 
-    line_obj = [line for line in (Line.from_hough_line(l[0]) for l in lines) if line.slope is not None and cmp(np.sign(line.slope), ref_sign)]
+    line_obj = [line for line in (Line.from_hough_line(line_data[0]) for line_data in lines) \
+                if line.slope is not None and cmp(np.sign(line.slope), ref_sign)]
 
     return group_lines(line_obj)
 
 
-def create_reference_court(ref_img_height: int = 25_000, ref_img_width: int = 11_000, line_thickness: int = 50) -> tuple[dict[str, Point], np.ndarray]:
+def create_reference_court(ref_img_height: int = 25_000, 
+                           ref_img_width: int = 11_000, 
+                           line_thickness: int = 50) -> tuple[dict[str, Point], np.ndarray]:
     ref_closer_outer_netline_point = 0, COURT_LENGTH_HALF
     ref_closer_outer_baseline_point = 0, LENGTH
     ref_closer_outer_baseline_point_2 = 0, 0
@@ -877,7 +954,11 @@ def create_reference_court(ref_img_height: int = 25_000, ref_img_width: int = 11
     }.items()}, ref_img
 
 
-def warp_points(ref_points: dict[str, Point], dst_points: dict[str, Point], src_image: np.ndarray, ref_img: np.ndarray, *names) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+def warp_points(ref_points: dict[str, Point], 
+                dst_points: dict[str, Point], 
+                src_image: np.ndarray, 
+                ref_img: np.ndarray, 
+                *names: str) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     ref_points_arr = np.float32([ref_points[n].to_tuple() for n in names])
     dst_points_arr = np.float32([dst_points[n].to_tuple() for n in names])
     H, _ = cv2.findHomography(ref_points_arr, dst_points_arr)
@@ -908,7 +989,10 @@ def plot_results(img: np.ndarray, path: Path, pic_name: str, lines: dict[str, Li
     Image.fromarray(pic).save(path / pic_name)
 
 
-def measure_error(img: np.ndarray, found_points: dict[str, Point], ground_truth_points: dict[str, dict[str, float]], prefix: str | None = None) -> dict[str, float]:
+def measure_error(img: np.ndarray, 
+                  found_points: dict[str, Point], 
+                  ground_truth_points: dict[str, dict[str, float]], 
+                  prefix: str | None = None) -> dict[str, float]:
     errors = {}
     for name, pt in found_points.items():
         raw_gtpt = ground_truth_points.get(name)
@@ -946,7 +1030,17 @@ def load_config(config_filepath: str | Path, data_model: type[BaseModel]) -> Bas
         raise ValueError(f"Invalid configuration in {config_path}: {e}") from e
     
 
-def compose_court_data(closer_outer_baseline_point: Point, closer_outer_netline_point: Point, further_outer_baseline_point: Point, further_outer_netline_point: Point,closer_inner_baseline_point: Point, further_inner_baseline_point: Point, closer_inner_netline_point: Point, further_inner_netline_point: Point, net_service_point: Point, centre_service_point: Point, further_service_point: Point, closer_service_point: Point, closer_outer_sideline: Line, baseline: Line, netline: Line, further_outer_sideline: Line, closer_inner_sideline: Line, further_inner_sideline: Line, centre_service_line: Line, service_line: Line, data: GroundTruthCourtPoints = None) -> tuple[dict[str, Point], dict[str, Line], dict[str, dict[str, int]]]:
+def compose_court_data(closer_outer_baseline_point: Point, closer_outer_netline_point: Point, 
+                       further_outer_baseline_point: Point, further_outer_netline_point: Point,
+                       closer_inner_baseline_point: Point, further_inner_baseline_point: Point, 
+                       closer_inner_netline_point: Point, further_inner_netline_point: Point, 
+                       net_service_point: Point, centre_service_point: Point, 
+                       further_service_point: Point, closer_service_point: Point, 
+                       closer_outer_sideline: Line, baseline: Line, netline: Line, 
+                       further_outer_sideline: Line, closer_inner_sideline: Line, 
+                       further_inner_sideline: Line, centre_service_line: Line, 
+                       service_line: Line, data: GroundTruthCourtPoints = None) \
+                        -> tuple[dict[str, Point], dict[str, Line], dict[str, dict[str, int]]]:
     """
     Compose the destination and ground truth court geometry dictionaries.
     ground_truth_points are transformed into {"x": ..., "y": ...} format.
@@ -989,7 +1083,7 @@ def compose_court_data(closer_outer_baseline_point: Point, closer_outer_netline_
     return dst_points, dst_lines, ground_truth_points
 
 
-def validate_data_and_pictures(config_data, pictures) -> None:
+def validate_data_and_pictures(config_data: list, pictures: list[str]) -> None:
     """
     Validates that config_data and pictures have the same length.
     Raises a ValueError if they don't match.
@@ -1010,7 +1104,7 @@ def validate_data_and_pictures(config_data, pictures) -> None:
         raise ValueError(msg)
     
     
-def get_point_weights(row):
+def get_point_weights(row: pd.Series) -> float:
     WEIGHTS = {
         'closer_outer_baseline_point': 1,
         'closer_inner_baseline_point': 2,

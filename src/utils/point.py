@@ -1,5 +1,7 @@
+from typing import Iterator, Self
+
 import numpy as np
-from typing import Self
+
 from .common import Hashable
 
 
@@ -15,7 +17,7 @@ class Point[T:(int, float)](Hashable):
     """
     __slots__ = ('_x', '_y')
 
-    def __init__(self, x: T, y: T):
+    def __init__(self, x: T, y: T) -> None:
         """
         Create a new Point instance from X and Y coordinates.
 
@@ -26,11 +28,11 @@ class Point[T:(int, float)](Hashable):
         object.__setattr__(self, '_x', x)
         object.__setattr__(self, '_y', y)
 
-    def __setattr__(self, name, value):
+    def __setattr__(self, name: str, value: object) -> None:
         """Prevent modification after initialization."""
         raise AttributeError(f"'Point' object attribute '{name}' is read-only")
 
-    def _key_(self):
+    def _key_(self) -> tuple[T, T]:
         """Return the key for hashing and equality comparison."""
         return (self._x, self._y)
 
@@ -93,7 +95,7 @@ class Point[T:(int, float)](Hashable):
         else:
             raise IndexError("Point index out of range")
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[float]:
         """Allow unpacking like a tuple."""
         yield self._x
         yield self._y
