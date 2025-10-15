@@ -1,0 +1,30 @@
+[
+    {
+        "pic_name": "tc6.webp",
+        "bin_thresh": 0.6,
+        "bin_thresh_endline_scan": {"baseline": 0.7, "netline": 0.7},
+        "bin_thresh_centre_service_line": 0.65,
+        "max_line_gap": 10,
+        "max_line_gap_centre_service_line": 10,
+        "hough_thresh": 100,
+        "min_line_len_ratio": 0.5,
+        "offset": 20,
+        "extra_offset": 50,
+        "surface_type": "another",
+        "canny_thresh": {"lower": 20, "upper": 100}
+    },
+    {
+        "pic_name": "tc8.jpg",
+        "bin_thresh": 0.7,
+        "bin_thresh_endline_scan": {"baseline": 0.75, "netline": 0.75},
+        "bin_thresh_centre_service_line": 0.7,
+        "max_line_gap": 10,
+        "max_line_gap_centre_service_line": 10,
+        "hough_thresh": 100,
+        "min_line_len_ratio": 0.5,
+        "offset": 20,
+        "extra_offset": 75,
+        "surface_type": "another",
+        "canny_thresh": {"lower": 50, "upper": 150}
+    }
+]
