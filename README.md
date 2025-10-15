@@ -108,3 +108,34 @@ The images below provide a complete description of all target elements.
 
 ![img](readme_assets/target_objects.jpg)
 
+Key points with their names and explanations:
+<ol>
+    <li><span style="color:red">closer_outer_baseline_point</span> - the point closest to the camera, located at the intersection of the baseline and the outer doubles sideline.
+It should be the lowest point on the court in the image.</li>
+    <li>closer_outer_netline_point</li>
+    <li>further_outer_baseline_point</li>
+    <li>further_outer_netline_point</li>
+    <li>closer_inner_baseline_point</li>
+    <li>further_inner_baseline_point</li>
+    <li>closer_inner_netline_point</li>
+    <li>further_inner_netline_point</li>
+    <li>net_service_point</li>
+    <li>centre_service_point</li>
+    <li>further_service_point</li>
+    <li>closer_service_point</li>
+</ol>
+
+
+By connecting the corresponding points, we obtain the following lines that define the playing field and its main areas.:
+<ol>
+    <li>closer_outer_sideline</li>
+    <li>baseline</li>
+    <li>netline</li>
+    <li>further_outer_sideline</li>
+    <li>closer_inner_sideline</li>
+    <li>further_inner_sideline</li>
+    <li>centre_service_line</li>
+    <li>service_line</li>
+</ol>
+
+
