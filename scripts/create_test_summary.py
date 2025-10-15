@@ -1,9 +1,11 @@
-import numpy as np
-import pandas as pd
 from datetime import datetime
 from pathlib import Path
 from pprint import pprint
+
+import numpy as np
+import pandas as pd
 import tyro
+
 from src.utils.func import get_point_weights
 
 
@@ -50,7 +52,13 @@ def run(root_test_dir: Path = Path('results/tests'), n_recent: int | None = None
 
 
     merged_df.loc[len(merged_df)] = [''] * len(merged_df.columns)
-    aggrs = {'max': lambda x: x.max(), 'min': lambda x: x.min(), 'mean': lambda x: x.mean(), 'std': lambda x: x.std(), 'median': lambda x: np.median(x)}
+    aggrs = {
+        'max': lambda x: x.max(), 
+        'min': lambda x: x.min(), 
+        'mean': lambda x: x.mean(), 
+        'std': lambda x: x.std(), 
+        'median': lambda x: np.median(x)
+        }
     rows = []
     for key, func in aggrs.items():
         row = []
