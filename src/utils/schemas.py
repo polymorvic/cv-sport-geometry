@@ -15,7 +15,7 @@ class GroundTruthPoint(BaseModel):
         if not (0.0 <= v <= 100.0):
             raise ValueError("Coordinate must be within [0, 100]")
         return v
-    
+
 
 class GroundTruthCourtPoints(BaseModel):
     model_config = ConfigDict(strict=True)
@@ -59,6 +59,7 @@ class ImageParams(BaseModel):
 
     class Config:
         strict = True
+
 
 class TestImageParams(ImageParams):
     ground_truth_points: GroundTruthCourtPoints

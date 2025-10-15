@@ -11,6 +11,7 @@ from .point import Point
 
 type numeric = int | float
 
+
 class Line(Hashable):
     """
     Represents a 2D line in either slope-intercept form (y = ax + b) or vertical line form (xv = constant).
@@ -27,7 +28,6 @@ class Line(Hashable):
         or used as dictionary keys. The equality comparison between Line instances is performed based on
         the attributes defined in the internal __key method.
     """
-    
 
     def __init__(self, slope: float | None = None, intercept: float | None = None, xv: float | None = None) -> None:
         """
@@ -42,7 +42,6 @@ class Line(Hashable):
         self.intercept = intercept
         self.xv = xv
 
-
     def _key_(self) -> tuple[numeric, numeric, numeric | None]:
         """
         Returns a tuple of identifying attributes used for hashing and equality comparison.
@@ -52,7 +51,6 @@ class Line(Hashable):
         """
         return (self.slope, self.intercept, self.xv)
 
-    
     def __repr__(self) -> str:
         """
         Returns a string representation of the line.
@@ -60,8 +58,7 @@ class Line(Hashable):
         Returns:
             str: String representation of the line.
         """
-        return f'y = {self.slope} * x + {self.intercept}'
-    
+        return f"y = {self.slope} * x + {self.intercept}"
 
     def copy(self) -> Line:
         """
@@ -71,11 +68,10 @@ class Line(Hashable):
             Line: A new Line instance with the same attributes.
         """
         return copy.deepcopy(self)
-    
 
     def intersection(self, another_line: Self, image: np.ndarray) -> Intersection | None:
         """
-        Compute the intersection point between this line and another line, 
+        Compute the intersection point between this line and another line,
         and return it as an `Intersection` object if it lies within image bounds.
 
         Args:
@@ -86,10 +82,11 @@ class Line(Hashable):
             Intersection | None: The intersection object if the lines intersect within the image bounds,
             otherwise None.
         """
-        if (self.slope is not None and another_line.slope is not None and self.slope == another_line.slope) \
-            or (self.xv is not None and another_line.xv is not None):
+        if (self.slope is not None and another_line.slope is not None and self.slope == another_line.slope) or (
+            self.xv is not None and another_line.xv is not None
+        ):
             return None
-        
+
         elif self.xv is not None and another_line.xv is None:
             x = self.xv
             y = another_line.slope * x + another_line.intercept
@@ -107,7 +104,6 @@ class Line(Hashable):
             return Intersection(self, another_line, Point(int(x), int(y)))
         else:
             return None
-    
 
     def y_for_x(self, x: int) -> int | None:
         """
@@ -127,7 +123,6 @@ class Line(Hashable):
         if self.slope is None or self.intercept is None:
             return None
         return int(self.slope * x + self.intercept)
-    
 
     def x_for_y(self, y: int) -> int | None:
         """
@@ -151,7 +146,6 @@ class Line(Hashable):
         if self.slope == 0 or self.slope is None:
             return None
         return int((y - self.intercept) / self.slope)
-    
 
     def get_points_by_distance(self, main_point: Point, distance: float) -> tuple[Point, Point]:
         """
@@ -184,7 +178,7 @@ class Line(Hashable):
         # This simplifies to a quadratic equation in x: A*x^2 + B*x + C = 0
         A = 1 + m**2
         B = -2 * main_x + 2 * m * (b - main_y)
-        C = main_x**2 + (b - main_y)**2 - distance**2
+        C = main_x**2 + (b - main_y) ** 2 - distance**2
 
         discriminant = B**2 - 4 * A * C
         if discriminant < 0:
@@ -201,8 +195,7 @@ class Line(Hashable):
         y2 = int(self.y_for_x(x2))
 
         return Point(x1, y1), Point(x2, y2)
-        
-    
+
     def limit_to_img(self, img: np.ndarray) -> tuple[Point, Point]:
         """
         Returns two endpoints of the line segment clipped to the image boundaries.
@@ -249,14 +242,13 @@ class Line(Hashable):
 
         raise ValueError("Line does not intersect the image in at least two places.")
 
-
     def check_point_on_line(self, point: Point, tolerance: int = None) -> bool:
         """
         Checks whether a given point lies on the line, optionally within a specified tolerance.
 
         Args:
             point (tuple[int, int]): The (x, y) coordinates of the point to check.
-            tolerance (int, optional): Allowed deviation in pixels for both x and y. 
+            tolerance (int, optional): Allowed deviation in pixels for both x and y.
                                     If None, the match must be exact.
 
         Returns:
@@ -269,17 +261,13 @@ class Line(Hashable):
         # If point is outside defined part of the line
         if y is None or x is None:
             return False
-        
+
         line_point = Point(x, y).as_int()
 
         if tolerance is None:
             return point.x == line_point.x and point.y == line_point.y
 
-        return (
-            abs(line_point.y - point.y) < tolerance and
-            abs(line_point.x - point.x) < tolerance
-        )  
-
+        return abs(line_point.y - point.y) < tolerance and abs(line_point.x - point.x) < tolerance
 
     @property
     def theta(self) -> float:
@@ -292,7 +280,6 @@ class Line(Hashable):
         if self.slope is None:
             return 90.0
         return np.degrees(np.arctan(self.slope))
-        
 
     @classmethod
     def from_hough_line(cls, hough_line: tuple[int, int, int, int]) -> Line:
@@ -307,7 +294,6 @@ class Line(Hashable):
         """
         x1, y1, x2, y2 = hough_line
         return cls.from_points((x1, y1), (x2, y2))
-    
 
     @classmethod
     def from_points(cls, p1: tuple[int, int], p2: tuple[int, int]) -> Line:
@@ -334,16 +320,15 @@ class Line(Hashable):
             xv = None
 
         return cls(slope, intercept, xv)
-    
+
 
 class LineGroup(Line):
     """
     A group of Line objects that are approximately aligned, represented as a single approximated line.
-    
-    The approximation is based on the median slope/intercept (for non-vertical lines) 
+
+    The approximation is based on the median slope/intercept (for non-vertical lines)
     or median x-value (for vertical lines).
     """
-
 
     def __init__(self, lines: list[Line] = None) -> None:
         self.lines = lines or []
@@ -353,27 +338,25 @@ class LineGroup(Line):
         else:
             self._calculate_line_approximation()
 
-
     def __repr__(self) -> str:
         """Return a string representation of the approximated line equation."""
         if not self.lines:
             return "LineGroup(empty)"
-        
+
         if self.xv is not None:
             return f"LineGroup: x = {self.xv:.2f} (from {len(self.lines)} lines)"
         else:
             return f"LineGroup: y = {self.slope:.2f} * x + {self.intercept:.2f} (from {len(self.lines)} lines)"
-    
 
     def process_line(self, line: Line, thresh_theta: float | int, thresh_intercept: float | int) -> bool:
         """
         Try to add a Line to the group if it is similar enough to the reference line.
-        
+
         Args:
             line (Line): The line to evaluate and possibly add.
             thresh_theta (float | int): Angular threshold for similarity in orientation.
             thresh_intercept (float | int): Threshold for similarity in intercept (used for non-vertical lines).
-        
+
         Returns:
             bool: True if the line was added to the group, False otherwise.
         """
@@ -381,30 +364,27 @@ class LineGroup(Line):
         found = False
 
         if abs(ref.theta - line.theta) < thresh_theta:
-            
             if ref.xv is None and line.xv is None:
                 if abs(ref.intercept - line.intercept) < thresh_intercept:
                     found = True
-        
+
             if ref.xv is not None or line.xv is not None:
                 found = True
-            
+
             if found:
                 self.lines.append(line)
                 self._calculate_line_approximation()
 
-        self.lines = sorted(self.lines, key = lambda line: -line.intercept)
+        self.lines = sorted(self.lines, key=lambda line: -line.intercept)
         return found
-    
 
-    def get_line(self, line_type: Literal['min', 'max']) -> Line:
-        return {'min': self.lines[0],'max': self.lines[-1]}[line_type]
-    
+    def get_line(self, line_type: Literal["min", "max"]) -> Line:
+        return {"min": self.lines[0], "max": self.lines[-1]}[line_type]
 
     def _calculate_line_approximation(self) -> None:
         """
         Calculate the approximated line for the group based on the median of included lines.
-        
+
         - For vertical lines (with xv), median x is used.
         - For non-vertical lines, median slope and intercept are used.
         """
@@ -418,5 +398,3 @@ class LineGroup(Line):
             self.xv = None
             self.slope = np.median([line.slope for line in self.lines])
             self.intercept = np.median([line.intercept for line in self.lines])
-
-

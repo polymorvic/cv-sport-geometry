@@ -3,15 +3,12 @@ from collections.abc import Hashable as SupportsHash
 
 
 class Hashable(ABC):
-
     @abstractmethod
     def _key_(self) -> SupportsHash:
         raise NotImplementedError
 
-
     def __hash__(self) -> int:
         return hash(self._key_())
-
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, self.__class__):

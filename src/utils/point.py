@@ -5,7 +5,7 @@ import numpy as np
 from .common import Hashable
 
 
-class Point[T:(int, float)](Hashable):
+class Point[T: (int, float)](Hashable):
     """
     Immutable 2D point represented as a generic point with two numbers.
 
@@ -15,7 +15,8 @@ class Point[T:(int, float)](Hashable):
     Type Parameters:
         T (int | float): The coordinate type.
     """
-    __slots__ = ('_x', '_y')
+
+    __slots__ = ("_x", "_y")
 
     def __init__(self, x: T, y: T) -> None:
         """
@@ -25,8 +26,8 @@ class Point[T:(int, float)](Hashable):
             x (T): The X coordinate (int or float).
             y (T): The Y coordinate (int or float).
         """
-        object.__setattr__(self, '_x', x)
-        object.__setattr__(self, '_y', y)
+        object.__setattr__(self, "_x", x)
+        object.__setattr__(self, "_y", y)
 
     def __setattr__(self, name: str, value: object) -> None:
         """Prevent modification after initialization."""
@@ -49,7 +50,7 @@ class Point[T:(int, float)](Hashable):
             Point[T]: A new immutable Point instance.
         """
         return cls(x, y)
-    
+
     @classmethod
     def from_iterable(cls, iterable: tuple[T, T] | list[T, T]) -> Self:
         """
@@ -78,11 +79,11 @@ class Point[T:(int, float)](Hashable):
     def y(self) -> T:
         """Get the Y coordinate of the point."""
         return self._y
-    
+
     def distance(self, another_point: Self) -> float:
         """Calculate Euclidean distance to another point."""
         return np.linalg.norm(np.array([self.x, self.y]) - np.array([another_point.x, another_point.y]))
-    
+
     def is_in_area(self, p1: Self, p2: Self) -> bool:
         return p1.x < self.x < p2.x and p1.y < self.y < p2.y
 
@@ -111,10 +112,10 @@ class Point[T:(int, float)](Hashable):
     def __str__(self) -> str:
         """Return string representation."""
         return f"({self._x}, {self._y})"
-    
+
     def as_int(self) -> Self:
         return Point(int(self.x), int(self.y))
-    
+
     def to_tuple(self) -> tuple[T, T]:
         """
         Convert the Point to a tuple (x, y).
