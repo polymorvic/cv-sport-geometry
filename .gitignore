@@ -15,6 +15,6 @@ wheels/
 *.jpg
 *.csv
 *.png
-*.DS_Store
+.DS_Store
 *.webp
 *.txt
