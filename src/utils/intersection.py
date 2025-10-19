@@ -84,7 +84,7 @@ class Intersection(Hashable):
         Returns:
             float: The Euclidean distance.
         """
-        return np.linalg.norm(np.array(self.point) - np.array(another_intersection.point))
+        return self.point.distance(another_intersection.point)
     
 
     def other_line(self, used: Line) -> Line:
