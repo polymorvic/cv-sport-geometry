@@ -1,4 +1,3 @@
-from datetime import datetime
 from pathlib import Path
 
 import tyro
@@ -42,18 +41,18 @@ def run(result_dir: Path = Path("results/run")) -> None:
                 if intersection is not None:
                     intersections.append(intersection)
 
-        candidates = CourtFinder(intersections, pic)
+        court_finder = CourtFinder(intersections, pic)
 
         try:
             closer_outer_baseline_intersecetion, closer_outer_netintersection, used_line = (
-                candidates.find_closer_outer_baseline_point()
+                court_finder.find_closer_outer_baseline_point()
             )
             closer_outer_baseline_point = closer_outer_baseline_intersecetion.point
             closer_outer_netline_point = closer_outer_netintersection.point
 
             closer_outer_sideline = Line.from_points(closer_outer_baseline_point, closer_outer_netline_point)
 
-            further_outer_baseline_intersection, last_local_line = candidates.find_further_outer_baseline_intersection(
+            further_outer_baseline_intersection, last_local_line = court_finder.find_further_outer_baseline_intersection(
                 closer_outer_baseline_intersecetion,
                 used_line,
                 param.canny_thresh.lower,
@@ -64,9 +63,9 @@ def run(result_dir: Path = Path("results/run")) -> None:
 
             baseline = Line.from_points(closer_outer_baseline_point, further_outer_baseline_point)
 
-            netline = candidates.find_netline(closer_outer_netline_point, baseline, param.max_line_gap)
+            netline = court_finder.find_netline(closer_outer_netline_point, baseline, param.max_line_gap)
 
-            further_outer_sideline = candidates.find_further_doubles_sideline(
+            further_outer_sideline = court_finder.find_further_doubles_sideline(
                 further_outer_baseline_point,
                 last_local_line,
                 param.offset,
@@ -76,7 +75,7 @@ def run(result_dir: Path = Path("results/run")) -> None:
             )
             further_outer_netline_point = further_outer_sideline.intersection(netline, pic).point
 
-            closer_inner_baseline_point, further_inner_baseline_point = candidates.scan_endline(
+            closer_inner_baseline_point, further_inner_baseline_point = court_finder.scan_endline(
                 baseline,
                 netline,
                 closer_outer_baseline_point,
@@ -90,7 +89,7 @@ def run(result_dir: Path = Path("results/run")) -> None:
                 searching_line="base",
             )
 
-            closer_inner_netline_point, further_inner_netline_point = candidates.scan_endline(
+            closer_inner_netline_point, further_inner_netline_point = court_finder.scan_endline(
                 baseline,
                 netline,
                 closer_outer_baseline_point,
@@ -107,7 +106,7 @@ def run(result_dir: Path = Path("results/run")) -> None:
             closer_inner_sideline = Line.from_points(closer_inner_baseline_point, closer_inner_netline_point)
             further_inner_sideline = Line.from_points(further_inner_baseline_point, further_inner_netline_point)
 
-            net_service_point, centre_service_line = candidates.find_net_service_point_centre_service_line(
+            net_service_point, centre_service_line = court_finder.find_net_service_point_centre_service_line(
                 closer_outer_baseline_point,
                 closer_outer_netline_point,
                 further_outer_baseline_point,
@@ -126,7 +125,7 @@ def run(result_dir: Path = Path("results/run")) -> None:
                 param.hough_thresh,
             )
 
-            centre_service_point, further_service_point, closer_service_point = candidates.find_center(
+            centre_service_point, further_service_point, closer_service_point = court_finder.find_center(
                 closer_outer_baseline_point,
                 closer_outer_netline_point,
                 further_outer_baseline_point,

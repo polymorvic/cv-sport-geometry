@@ -28,7 +28,7 @@ test_df_rows = []
 validate_data_and_pictures(config.data, train_pics)
 
 for i, (data, train_pic) in enumerate(zip(config.data, train_pics, strict=False)):
-    path = Path(f"{config.testing_pics_dir}/{config.run_name}")
+    path = Path(config.testing_pics_dir / config.run_name)
     path.mkdir(exist_ok=True, parents=True)
 
     train_pic_hough_lines, line_endpoints = apply_hough_transformation(train_pic)
@@ -45,12 +45,12 @@ for i, (data, train_pic) in enumerate(zip(config.data, train_pics, strict=False)
             if intersection is not None:
                 intersections.append(intersection)
 
-    candidates = CourtFinder(intersections, train_pic)
+    court_finder = CourtFinder(intersections, train_pic)
 
     try:
         # closer_outer_baseline_point, closer_outer_netline_point, closer_outer_sideline -------
         closer_outer_baseline_intersecetion, closer_outer_netintersection, used_line = (
-            candidates.find_closer_outer_baseline_point()
+            court_finder.find_closer_outer_baseline_point()
         )
         closer_outer_baseline_point = closer_outer_baseline_intersecetion.point
         closer_outer_netline_point = closer_outer_netintersection.point
@@ -58,7 +58,7 @@ for i, (data, train_pic) in enumerate(zip(config.data, train_pics, strict=False)
         closer_outer_sideline = Line.from_points(closer_outer_baseline_point, closer_outer_netline_point)
 
         # further_outer_baseline_point, baseline  -------
-        further_outer_baseline_intersection, last_local_line = candidates.find_further_outer_baseline_intersection(
+        further_outer_baseline_intersection, last_local_line = court_finder.find_further_outer_baseline_intersection(
             closer_outer_baseline_intersecetion,
             used_line,
             data.canny_thresh.lower,
@@ -70,10 +70,10 @@ for i, (data, train_pic) in enumerate(zip(config.data, train_pics, strict=False)
         baseline = Line.from_points(closer_outer_baseline_point, further_outer_baseline_point)
 
         # netline -----
-        netline = candidates.find_netline(closer_outer_netline_point, baseline, data.max_line_gap)
+        netline = court_finder.find_netline(closer_outer_netline_point, baseline, data.max_line_gap)
 
         # further_outer_sideline, further_outer_netline_point ---
-        further_outer_sideline = candidates.find_further_doubles_sideline(
+        further_outer_sideline = court_finder.find_further_doubles_sideline(
             further_outer_baseline_point,
             last_local_line,
             data.offset,
@@ -84,7 +84,7 @@ for i, (data, train_pic) in enumerate(zip(config.data, train_pics, strict=False)
         further_outer_netline_point = further_outer_sideline.intersection(netline, train_pic).point
 
         # inner points
-        closer_inner_baseline_point, further_inner_baseline_point = candidates.scan_endline(
+        closer_inner_baseline_point, further_inner_baseline_point = court_finder.scan_endline(
             baseline,
             netline,
             closer_outer_baseline_point,
@@ -98,7 +98,7 @@ for i, (data, train_pic) in enumerate(zip(config.data, train_pics, strict=False)
             searching_line="base",
         )
 
-        closer_inner_netline_point, further_inner_netline_point = candidates.scan_endline(
+        closer_inner_netline_point, further_inner_netline_point = court_finder.scan_endline(
             baseline,
             netline,
             closer_outer_baseline_point,
@@ -116,7 +116,7 @@ for i, (data, train_pic) in enumerate(zip(config.data, train_pics, strict=False)
         further_inner_sideline = Line.from_points(further_inner_baseline_point, further_inner_netline_point)
 
         # net_service_point and centre_service_line
-        net_service_point, centre_service_line = candidates.find_net_service_point_centre_service_line(
+        net_service_point, centre_service_line = court_finder.find_net_service_point_centre_service_line(
             closer_outer_baseline_point,
             closer_outer_netline_point,
             further_outer_baseline_point,
@@ -135,7 +135,7 @@ for i, (data, train_pic) in enumerate(zip(config.data, train_pics, strict=False)
             data.hough_thresh,
         )
 
-        centre_service_point, further_service_point, closer_service_point = candidates.find_center(
+        centre_service_point, further_service_point, closer_service_point = court_finder.find_center(
             closer_outer_baseline_point,
             closer_outer_netline_point,
             further_outer_baseline_point,
