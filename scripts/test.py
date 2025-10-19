@@ -250,8 +250,7 @@ for i, (data, train_pic) in enumerate(zip(config.data, train_pics, strict=False)
 
     for (scenario_name, _), err_dict in zip(scenarios, scenario_errors, strict=False):
         if isinstance(err_dict, dict):
-            for k, v in err_dict.items():
-                row_dict[f"{scenario_name}_{k}"] = v
+            row_dict = {f"{scenario_name}_{k}": v for k, v in err_dict.items()}
 
     test_df_rows.append(row_dict)
 
