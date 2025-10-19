@@ -7,9 +7,9 @@ import numpy as np
 from .const import SETTINGS
 from .func import (
     _plot_objs,
-    _plot_two_lines_on_img,
     check_items_sign,
     crop_court_field,
+    detect_lines_opposite_slope,
     draw_and_display,
     find_net_lines,
     find_point_neighbourhood,
@@ -263,6 +263,7 @@ class CourtFinder:
         img_gray = cv2.cvtColor(img_piece, cv2.COLOR_RGB2GRAY)
 
         if surface_type == "clay":
+
             edges = cv2.Canny(img_gray, 150, 500)
 
             lines = cv2.HoughLinesP(edges, 1, np.pi / 180, threshold=20, minLineLength=50, maxLineGap=10)
@@ -274,6 +275,15 @@ class CourtFinder:
                 for line in line_obj
                 if line.slope is not None and np.sign(line.slope) != np.sign(prev_local_line.slope)
             ]
+
+            line_obj = detect_lines_opposite_slope(
+                img_gray,
+                150, 500,
+                hough_threshold=20,
+                min_line_length=50,
+                max_line_gap=10,
+                ref_line=prev_local_line,
+                )
 
             local_point = transform_point(further_outer_baseline_point, *original_range, False)
             line = get_closest_line(line_obj, local_point)
@@ -382,20 +392,14 @@ class CourtFinder:
 
                 bin_img |= net_img
 
-            edges = cv2.Canny(bin_img, cannys_lower_thresh, cannys_lower_upper)
-            lines = cv2.HoughLinesP(
-                edges,
-                1,
-                np.pi / 180,
-                threshold=hough_thresh,
-                minLineLength=self.corner_offset * 0.5,
-                maxLineGap=hough_max_line_gap,
+            line_obj = detect_lines_opposite_slope(
+                bin_img,
+                cannys_lower_thresh, cannys_lower_upper,
+                hough_threshold=hough_thresh,
+                min_line_length=self.corner_offset * 0.5,
+                max_line_gap=hough_max_line_gap,
+                ref_line=endline,
             )
-            lines = [] if lines is None else lines
-            line_obj = [Line.from_hough_line(line[0]) for line in lines]
-            line_obj = [
-                line for line in line_obj if line.slope is not None and np.sign(line.slope) != np.sign(endline.slope)
-            ]
 
             grouped_lines = group_lines(line_obj)
 

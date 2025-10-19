@@ -928,6 +928,49 @@ def image_to_lines(
     return group_lines(line_obj)
 
 
+def detect_lines_opposite_slope(
+    image,
+    canny_lower: float,
+    canny_upper: float,
+    *,
+    hough_threshold: int,
+    min_line_length: float,
+    max_line_gap: float,
+    ref_line,          
+    rho: float = 1.0,
+    theta: float = np.pi / 180,
+):
+    """
+    Run Canny + HoughLinesP, convert to Line objects, and keep only lines whose
+    slope sign differs from ref_line.slope.
+
+    Returns:
+        list[Line]: filtered Line objects
+    """
+    edges = cv2.Canny(image, canny_lower, canny_upper)
+    raw = cv2.HoughLinesP(
+        edges,
+        rho,
+        theta,
+        threshold=hough_threshold,
+        minLineLength=min_line_length,
+        maxLineGap=max_line_gap,
+    )
+    raw = [] if raw is None else raw
+
+    line_objs = [Line.from_hough_line(l[0]) for l in raw]
+    ref_slope = getattr(ref_line, "slope", None)
+    if ref_slope is None:
+        return [ln for ln in line_objs if ln.slope is not None]
+
+    ref_sign = np.sign(ref_slope)
+    return [
+        ln
+        for ln in line_objs
+        if (ln.slope is not None) and (np.sign(ln.slope) != ref_sign)
+    ]
+
+
 def create_reference_court(
     ref_img_height: int = 25_000, ref_img_width: int = 11_000, line_thickness: int = 50
 ) -> tuple[dict[str, Point], np.ndarray]:
