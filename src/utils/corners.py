@@ -7,6 +7,7 @@ import numpy as np
 from .const import SETTINGS
 from .func import (
     _plot_objs,
+    _plot_two_lines_on_img,
     check_items_sign,
     crop_court_field,
     find_net_lines,
@@ -167,12 +168,7 @@ class CourtFinder:
                     intersection = local_line.intersection(net_line, img_piece)
 
                     if SETTINGS.debug:
-                        img_copy = img_piece.copy()
-                        pts1 = local_line.limit_to_img(img_copy)
-                        pts2 = net_line.limit_to_img(img_copy)
-                        cv2.line(img_copy, *pts1, (0, 0, 255))
-                        cv2.line(img_copy, *pts2, (0, 255, 255))
-                        _plot_objs(img_copy)
+                        _plot_two_lines_on_img(img_piece, local_line, net_line)
 
                     if intersection is not None and np.sign(net_line.slope) != np.sign(local_line.slope):
                         intersections.append(intersection)

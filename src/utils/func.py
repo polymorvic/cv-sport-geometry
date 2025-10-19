@@ -1196,3 +1196,12 @@ def _compute_angle(line1: Line, line2: Line) -> float:
         angle = np.rad2deg(np.arctan((line2.slope - line1.slope) / (1 + line1.slope * line2.slope)))
 
     return angle + 180
+
+
+def _plot_two_lines_on_img(img: np.ndarray, line1: Line, line2: Line) -> None:
+    img_copy = img.copy()
+    pts1 = line1.limit_to_img(img_copy)
+    pts2 = line2.limit_to_img(img_copy)
+    cv2.line(img_copy, *pts1, (0, 0, 255))
+    cv2.line(img_copy, *pts2, (0, 255, 255))
+    _plot_objs(img_copy)
