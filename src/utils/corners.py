@@ -78,33 +78,38 @@ class CourtFinder:
             for line in (intersect.line1, intersect.line2):
                 self.line_intersection_mapping[line].add(intersect)
 
-    def find_closer_outer_baseline_point(self) -> tuple[Intersection, Point]:
+    def find_closer_outer_baseline_point(self) -> tuple[Intersection, Intersection, Line]:
         """
-        Finds the nearest outer baseline intersection point within a specific angular range.
+        Finds a baseline-side intersection and its nearest corresponding net-side point.
 
-        This method iterates through all stored intersections, filtering them by angle
-        (between 90 and 270 degrees). For each matching intersection, it searches along
-        both connected lines to find the nearest intersection that also matches the angle
-        condition. Once found, it traverses the corresponding line to locate the
-        corresponding "net-side" intersection point.
+        This method iterates through all intersections and filters those whose angle 
+        lies between 90 and 270 degrees (i.e., outer baseline side). For each qualifying intersection, 
+        it explores both connected lines to locate the nearest intersection along that line 
+        that also meets the angular condition.
+
+        Once a candidate line is found, it verifies whether the intersection belongs to 
+        a valid court corner region using `find_point_neighbourhood` and `is_court_corner`. 
+        If so, it proceeds to search for the corresponding intersection point 
+        closer to the net by calling `_find_closer_outer_netpoint`.
 
         Returns:
-            tuple[Intersection, Point]:
-                - The original qualifying intersection.
-                - The corresponding point found by traversing toward the net.
+            tuple[Intersection, Point, Line]:
+                - The qualifying outer-baseline intersection.
+                - The corresponding net-side intersection point found along the same line.
+                - The line used to reach that net-side point.
 
         Notes:
-            - The `Intersection` objects are assumed to have `angle`, `line1`, `line2`,
-            and `point` attributes.
-            - The method relies on `self.line_intersection_mapping` for connected intersections.
-            - Returns `None` implicitly if no qualifying pair is found.
+            - The `Intersection` objects must have attributes: `angle`, `line1`, `line2`, and `point`.
+            - The method relies on `self.line_intersection_mapping` for retrieving 
+            intersections associated with each line.
+            - Returns `None` implicitly if no valid baseline–net intersection pair is found.
         """
         for intersect in self.intersections:
             if not 270 > intersect.angle > 90:
                 continue
 
             nearest_intersection = None
-            for _, line in enumerate((intersect.line1, intersect.line2)):
+            for line in (intersect.line1, intersect.line2):
                 sorted_intersection_points = sorted(
                     self.line_intersection_mapping[line], key=lambda intersection: intersection.distance(intersect)
                 )
