@@ -33,11 +33,9 @@ class Intersection(Hashable):
 
     def __repr__(self) -> str:
         """
-        Return a string representation of the intersection point and both lines.
-        Lines are shown in order of slope (lower slope first).
-
         Returns:
-            str: The intersection point and equations of both lines ordered by slope.
+            str: Returns a string representation of the intersection point and both lines.
+            Lines are shown in order of slope (lower slope first).
         """
 
         def format_line(line: Line) -> str:
@@ -53,7 +51,7 @@ class Intersection(Hashable):
         line1_eq = format_line(lines[0])
         line2_eq = format_line(lines[1])
 
-        return f"Point{self.point} line1: [{line1_eq}] line2: [{line2_eq}]"
+        return f"Point {self.point} line1: [{line1_eq}] line2: [{line2_eq}]"
 
     def _key_(self) -> tuple[Point, tuple[float, float]]:
         """
@@ -87,27 +85,15 @@ class Intersection(Hashable):
             float: The Euclidean distance.
         """
         return np.linalg.norm(np.array(self.point) - np.array(another_intersection.point))
-
-    def find_common_line(self, another_intersection: Self) -> Line | None:
-        for line in (self.line1, self.line2):
-            for another_line in (another_intersection.line1, another_intersection.line2):
-                print(line._key_(), another_line._key_())
-                if line.slope == another_line.slope:
-                    return line
+    
 
     def other_line(self, used: Line) -> Line:
         """
         Return the line from this intersection that is NOT `used`.
         Raises ValueError if `used` doesn't belong to this intersection.
         """
-        if (
-            self.line1 is used
-            or getattr(self.line1, "_key_", lambda: None)() == getattr(used, "_key_", lambda: object)()
-        ):
+        if self.line1 is used or self.line1._key_() == used._key_():
             return self.line2
-        if (
-            self.line2 is used
-            or getattr(self.line2, "_key_", lambda: None)() == getattr(used, "_key_", lambda: object)()
-        ):
+        if self.line2 is used or self.line2._key_() == used._key_():
             return self.line1
         raise ValueError("The provided line does not belong to this intersection.")
