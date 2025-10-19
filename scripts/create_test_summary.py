@@ -6,16 +6,26 @@ import numpy as np
 import pandas as pd
 import tyro
 
+from src.utils.const import TIMESTAMPT_STRING
 from src.utils.func import get_point_weights
 
 
 def run(root_test_dir: Path = Path("results/tests"), n_recent: int | None = None) -> None:
-    """_summary_
+    """Generate and save a summary of recent test runs as a CSV file.
+
+    Loads recent test result files from ``root_test_dir``, merges them into a
+    DataFrame, computes aggregate statistics for each metric, appends summary
+    rows, prints the result, and saves it as
+    ``test_summary_<TIMESTAMPT_STRING>.csv`` in the same directory.
+    TIMESTAMPT_STRING comes from const module
 
     Args:
-        root_test_dir (Path): _description_
+        root_test_dir: Directory containing test run results.
+        n_recent: Optional number of most recent runs to include.
+
+    Returns:
+        None. Prints and saves the summary CSV.
     """
-    dt_string = datetime.now().strftime("%Y-%m-%d-%H_%M_%S")
     dfs = []
     tuple_colnames = []
     cols_to_remove = [
@@ -72,7 +82,7 @@ def run(root_test_dir: Path = Path("results/tests"), n_recent: int | None = None
 
     stats_rows = pd.DataFrame(rows, columns=merged_df.columns)
     merged_df = pd.concat([merged_df, stats_rows], ignore_index=True)
-    merged_df.to_csv(root_test_dir / f"test_summary_{dt_string}.csv", index=False)
+    merged_df.to_csv(root_test_dir / f"test_summary_{TIMESTAMPT_STRING}.csv", index=False)
     pprint(merged_df)
 
 

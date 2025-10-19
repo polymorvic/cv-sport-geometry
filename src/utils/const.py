@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from .schemas import Settings
 
 ARRAY_X_INDEX = 1
@@ -9,3 +11,4 @@ COURT_LENGTH_HALF = int(LENGTH / 2)
 COURT_WIDTH_HALF = int(WIDTH / 2)
 DIST_FROM_BASELINE = int(5.485 * 1000)
 SETTINGS = Settings()
+TIMESTAMPT_STRING = datetime.now().strftime("%Y-%m-%d-%H-%M-%S")

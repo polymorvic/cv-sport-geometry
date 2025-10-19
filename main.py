@@ -3,6 +3,7 @@ from pathlib import Path
 
 import tyro
 
+from src.utils.const import TIMESTAMPT_STRING
 from src.utils.corners import CourtFinder
 from src.utils.func import (
     apply_hough_transformation,
@@ -18,8 +19,7 @@ from src.utils.schemas import ImageParams
 
 
 def run(result_dir: Path = Path("results/run")) -> None:
-    now_str = datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
-    path = result_dir / now_str
+    path = result_dir / TIMESTAMPT_STRING
     path.mkdir(exist_ok=True, parents=True)
 
     params = load_config("config/run.config.json", ImageParams)
