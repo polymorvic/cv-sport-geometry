@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, Self
 import numpy as np
 
 from .common import Hashable
+from .func import _compute_angle
 
 if TYPE_CHECKING:
     from .lines import Line
@@ -28,19 +29,7 @@ class Intersection(Hashable):
         self.line1 = line1
         self.line2 = line2
         self.point = intersection_point
-
-        # computing angle between the lines
-        if line1.xv is None and line2.xv is not None:
-            angle = 90 - line1.theta
-        elif line1.xv is not None and line2.xv is None:
-            angle = 90 - line2.theta
-        elif line1.slope * line2.slope == -1:
-            angle = 90
-        else:
-            angle = np.rad2deg(np.arctan((line2.slope - line1.slope) / (1 + line1.slope * line2.slope)))
-
-        # angle adjustment
-        self.angle = angle + 180
+        self.angle = _compute_angle(self.line1, self.line2)
 
     def __repr__(self) -> str:
         """
