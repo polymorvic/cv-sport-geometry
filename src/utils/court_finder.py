@@ -139,6 +139,22 @@ class CourtFinder:
                         return intersect, net_intersection, closer_outer_baseline_point_used_line
 
     def _find_closer_outer_netpoint(self, line: Line, point: Point, warmup: int = 5) -> tuple[Intersection, Line]:
+        """Traverse from a starting point to the net and return the first net intersection.
+
+        This helper advances from point along line (skipping an initial `warmup`)
+        and evaluates net-line candidates in cropped stripes. When a valid net segment
+        is found, it returns both the geometric intersection and the supporting net
+        Line instance.
+
+        Args:
+            line: Direction of travel toward the net.
+            point: Starting point near the closer side of the court.
+            warmup: Number of initial steps to ignore to avoid local noise.
+
+        Returns:
+            tuple[Intersection, Line] | None: The intersection between the scan and the
+            detected net line (plus the net `Line` itself), or None if no net is detected.
+        """
         net_intersection = None
         intersection_global = None
         i = 0
@@ -189,6 +205,24 @@ class CourtFinder:
         warmup: int = 5,
         offset: int = None,
     ) -> Intersection | None:
+        """Find the further outer baseline by continuing the scan past the court.
+
+        Starting from the known closer-baseline intersection, this method keeps
+        moving along `used_line` and searches for the opposite (further) outer
+        baseline using Canny + Hough with configurable thresholds.
+
+        Args:
+            closer_outer_baseline_intersection: Already detected closer-side
+                baseline intersection.
+            used_line: The scan line along which to continue searching.
+            cannys_lower_thresh: Lower Canny threshold.
+            cannys_upper_thresh: Upper Canny threshold.
+            warmup: Number of initial iterations to ignore before evaluating.
+            offset: Pixel step; if None, a sensible default based on image size is used.
+
+        Returns:
+            Intersection | None: Intersection with the further outer baseline, or None if not found.
+        """
         further_outer_baseline_intersection = None
         offset = self.netline_offset if not offset else offset
         point = closer_outer_baseline_intersection.point
@@ -228,6 +262,25 @@ class CourtFinder:
         hough_thresh: int = 100,
         min_line_len: int = 100,
     ) -> Line:
+        """Detect the net line.
+
+        The search is constrained around `closer_outer_netpoint` and the
+        `baseline`. Edges are extracted with Canny, and straight segments are
+        grouped via probabilistic Hough; the best candidate aligned with the
+        expected net orientation is returned.
+
+        Args:
+            closer_outer_netpoint: A point on/near the net on the closer side.
+            baseline: Reference baseline used to bound the search region.
+            max_line_gap: Maximum gap between line segments to link (Hough).
+            cannys_thresh_lower: Lower Canny threshold.
+            cannys_thresh_upper: Upper Canny threshold.
+            hough_thresh: Minimum votes required in Hough space.
+            min_line_len: Minimum line length to accept (in pixels).
+
+        Returns:
+            Line: The detected net line as a Line instance.
+        """
         pic_copy = self.img.copy()
         img_gray = cv2.cvtColor(pic_copy, cv2.COLOR_RGB2GRAY)
         inv_img_gray = 255 - img_gray
@@ -254,6 +307,24 @@ class CourtFinder:
         bin_thresh: float,
         surface_type: str,
     ) -> Line:
+        """Detect the further doubles sideline (far side of the court).
+
+        The method initializes a local scan near `further_outer_baseline_point`,
+        biases the search using `prev_local_line` slope/angle, applies binary
+        thresholding (`bin_thresh`) depending on `surface_type` (e.g., clay,
+        another), and consolidates Hough segments into a single sideline.
+
+        Args:
+            further_outer_baseline_point: Point on the far outer baseline used as a seed.
+            prev_local_line: Previously detected local line to guide expected orientation.
+            offset: Primary sampling step along the scan direction.
+            extra_offset: Occasional larger step to escape weak responses.
+            bin_thresh: Threshold used for binarization before edge detection.
+            surface_type: String/enum describing the court surface to tune thresholds.
+
+        Returns:
+            Line: The detected further doubles sideline
+        """
         img_piece, *original_range = find_point_neighbourhood_simple(
             further_outer_baseline_point, offset + extra_offset, self.img, prev_local_line
         )
@@ -351,6 +422,39 @@ class CourtFinder:
         further_outer_endline_point_tolerance: int = 5,
         searching_line: Literal["net", "base"] = "base",
     ) -> tuple[Point, Point]:
+        """
+        Scans along the selected endline (baseline or netline) to detect the inner endline pair and
+        returns their global intersections with the endline.
+
+        The method iteratively traverses image windows along `endline` (after an optional `warmup`),
+        binarizes each window, detects lines with slope opposite to `endline` (Canny → Hough), groups
+        them, and keeps candidates whose intersections with `netline` lie between the outer net points
+        and whose intersections with `endline` are not within a tolerance of the given further-outer
+        endline point. For each window it records the group's `min` and `max` lines; after scanning to
+        the far end, the first `min` and last `max` intersections define the closer/further inner
+        endline points.
+
+        Args:
+            baseline, netline (Line): Court reference lines.
+            closer_outer_baseline_point, further_outer_baseline_point (Point): Outer baseline anchors.
+            closer_outer_netpoint, further_outer_netpoint (Point): Outer netline anchors.
+            bin_thresh (float): Fraction of local max grayscale used for binarization.
+            cannys_lower_thresh (int): Canny lower threshold.
+            cannys_lower_upper (int): Canny upper threshold.
+            hough_max_line_gap (int): Max gap for probabilistic Hough.
+            hough_thresh (int): Hough accumulator threshold.
+            warmup (int): Number of initial traverse steps to skip before detecting.
+            further_outer_endline_point_tolerance (int): Pixel tolerance around `further_outer_point`
+                used to exclude near-duplicate intersections.
+            searching_line (Literal["net","base"]): Which endline to scan; selects (new_point, endline,
+                further_outer_point) from netline or baseline context.
+
+        Returns:
+            tuple[Point, Point]: (closer_inner_endline_point, further_inner_endline_point).
+
+        Notes:
+            Assumes at least one `min` and one `max` candidate are found; otherwise the method will fail.
+        """
         options = {
             "net": {
                 "new_point": closer_outer_netpoint,
@@ -477,6 +581,31 @@ class CourtFinder:
         margin: int = 10,
         same_slope_sign: bool = False,
     ) -> tuple[Point, Line]:
+        """
+        Detects the service-line candidate that crosses both the netline and baseline, and returns
+        its intersection on the netline.
+
+        The method crops the court region between given baselines/netlines, detects candidate lines
+        (binarization → Canny → Hough), filters out known court lines, and selects a line whose
+        intersections with the netline and baseline fall between the inner boundary points (with margin).
+        Optionally constrains detection to lines sharing the baseline’s slope sign.
+
+        Args:
+            closer_outer_baseline_point, closer_outer_netline_point, further_outer_baseline_point,
+            further_outer_netline_point, closer_inner_baseline_point, further_inner_baseline_point,
+            closer_inner_netline_point, further_inner_netline_point (Point): Key court boundary points.
+            baseline, netline (Line): Reference court lines used for intersection tests.
+            bin_thresh (float): Threshold for image binarization.
+            cannys_lower_thresh, cannys_upper_thresh (int): Canny edge thresholds.
+            hough_max_line_gap (int): Max segment gap for probabilistic Hough.
+            min_line_len_ratio (float): Minimum line length ratio for detection.
+            hough_thresh (int): Hough accumulator threshold.
+            margin (int): Pixel margin for intersection windowing.
+            same_slope_sign (bool): If True, keep only lines with the same slope sign as `baseline`.
+
+        Returns:
+            tuple[Point, Line]: (net_service_point_on_netline, detected_service_line) if found, else None.
+        """
         img_piece, *origin = crop_court_field(
             self.img,
             baseline,
@@ -573,7 +702,31 @@ class CourtFinder:
         min_line_len_ratio: float,
         hough_thresh: int = 100,
         margin: int = 10,
-    ) -> tuple[Point, Point, Point]:
+    ) -> tuple[Point, Point, Point] | None:
+        """
+        Detects and returns the center service line intersection points within a tennis court image.
+
+        The method crops the court region between given baselines and netlines, detects candidate lines
+        using edge detection and Hough transform, filters out known court lines, and finds the line 
+        crossing both inner sidelines and the center service line.
+
+        Args:
+            closer_outer_baseline_point, closer_outer_netline_point, further_outer_baseline_point,
+            further_outer_netline_point, closer_inner_baseline_point, further_inner_baseline_point,
+            closer_inner_netline_point, further_inner_netline_point (Point): Key court boundary points.
+            baseline, closer_inner_sideline, further_inner_sideline, centre_service_line (Line): 
+                Reference court lines.
+            bin_thresh (float): Threshold for image binarization.
+            cannys_lower_thresh, cannys_upper_thresh (int): Canny edge detection thresholds.
+            hough_max_line_gap (int): Max gap between segments in Hough transform.
+            min_line_len_ratio (float): Minimum line length ratio for detection.
+            hough_thresh (int): Hough transform threshold.
+            margin (int): Pixel margin for filtering intersections.
+
+        Returns:
+            tuple[Point, Point, Point]: (center_service_point, further_service_point, closer_service_point)
+                if found, otherwise None.
+        """   
         img_piece, *origin = crop_court_field(
             self.img,
             baseline,
