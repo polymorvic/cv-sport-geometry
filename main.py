@@ -18,6 +18,35 @@ from src.utils.schemas import ImageParams
 
 
 def run(result_dir: Path = Path("results/run")) -> None:
+    """
+    Detects and reconstructs tennis-court geometry from input images and saves result plots.
+
+    Args:
+        result_dir: Base output directory. Results are written to
+            `{result_dir}/{TIMESTAMPT_STRING}/`.
+
+    Workflow (concise):
+        1) Load image-processing params from `config/run.config.json` and RGB images from `data/run`.
+        2) For each image:
+           - Detect lines (Canny + Hough), build `Line` objects, filter verticals (`xv is None`), and group lines.
+           - Compute all group–group intersections and initialize `CourtFinder`.
+           - Find outer baseline/net points and sidelines; derive baseline and net line.
+           - Scan for inner (singles) baselines and netline endpoints.
+           - Derive centre service line, net service point, court centre, and service line.
+           - Compose destination points/lines and plot/save results.
+        3) On failure for an image, print the error; remove the (per-run) folder if it stayed empty.
+
+    Side effects:
+        - Creates the timestamped output directory; saves plots there.
+        - Prints errors; deletes the output dir if no files were produced.
+
+    Notes:
+        Requires: TIMESTAMPT_STRING, `ImageParams`, and helpers:
+        `load_config`, `get_pictures`, `validate_data_and_pictures`,
+        `apply_hough_transformation`, `Line`, `group_lines`, `CourtFinder`,
+        `compose_court_data`, `plot_results`.
+    """
+    
     path = result_dir / TIMESTAMPT_STRING
     path.mkdir(exist_ok=True, parents=True)
 
