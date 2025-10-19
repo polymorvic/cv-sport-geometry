@@ -3,7 +3,7 @@ from pathlib import Path
 import matplotlib as mpl
 import pandas as pd
 
-from src.utils.corners import CourtFinder
+from src.utils.court_finder import CourtFinder
 from src.utils.func import (
     apply_hough_transformation,
     compose_court_data,

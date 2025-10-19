@@ -3,7 +3,7 @@ from pathlib import Path
 import tyro
 
 from src.utils.const import TIMESTAMPT_STRING
-from src.utils.corners import CourtFinder
+from src.utils.court_finder import CourtFinder
 from src.utils.func import (
     apply_hough_transformation,
     compose_court_data,
