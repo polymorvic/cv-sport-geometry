@@ -3,7 +3,7 @@ import json
 import os
 import random
 from pathlib import Path
-from typing import Iterable, Literal, Optional
+from typing import Iterable, Literal, Optional, TypeVar
 
 import cv2
 import matplotlib.pyplot as plt
@@ -29,6 +29,16 @@ from .schemas import GroundTruthCourtPoints
 
 
 def _plot_objs(*objs: np.ndarray) -> None:
+    """
+    Displays one or more image-like NumPy arrays sequentially using Matplotlib.
+
+    Each provided array is shown in a separate figure window for quick
+    visualization, typically used for debugging intermediate image
+    processing results.
+
+    Args:
+        *objs (np.ndarray): One or more image arrays to display.
+    """
     for obj in objs:
         plt.imshow(obj)
         plt.show()
@@ -456,6 +466,25 @@ def find_net_lines(
     min_line_len: int = 10,
     max_line_gap: int = 10,
 ) -> list[LineGroup]:
+    """
+    Detects and groups net lines in a given image section.
+
+    The function inverts the grayscale image, applies Canny edge detection,
+    detects line segments using the probabilistic Hough transform, visualizes
+    the detected lines (if debug mode is on), and groups them by slope and
+    proximity.
+
+    Args:
+        img_piece (np.ndarray): RGB input image section containing the court net area.
+        cannys_thresh_lower (int, optional): Lower Canny threshold (default: 50).
+        cannys_thresh_upper (int, optional): Upper Canny threshold (default: 150).
+        hough_thresh (int, optional): Threshold for Hough line detection (default: 10).
+        min_line_len (int, optional): Minimum line segment length (default: 10).
+        max_line_gap (int, optional): Maximum gap between line segments (default: 10).
+
+    Returns:
+        list[LineGroup]: List of grouped line objects representing detected net lines.
+    """
     piece_gray = cv2.cvtColor(img_piece, cv2.COLOR_RGB2GRAY)
     neg_gray_img = 255 - piece_gray
     edges = cv2.Canny(neg_gray_img, cannys_thresh_lower, cannys_thresh_upper)
@@ -479,12 +508,40 @@ def find_net_lines(
 
 
 def check_items_sign(line_groups: list[LineGroup]) -> bool:
+    """
+    Checks whether all lines in a list have slopes with the same sign.
+
+    Returns True if all slopes are positive or all are negative, and False
+    if the list contains a mix of positive and negative slopes.
+
+    Args:
+        line_groups (list[LineGroup]): List of line group objects with a `slope` attribute.
+
+    Returns:
+        bool: True if all slopes share the same sign, otherwise False.
+    """
     return all(item.slope > 0 for item in line_groups) or all(item.slope < 0 for item in line_groups)
 
 
 def transform_point(
     point: Intersection | Point, original_x_start: int, original_y_start: int, to_global: bool = True
 ) -> Point:
+    """
+    Transforms a point's coordinates between local and global image reference frames.
+
+    The function shifts a point by the provided (x, y) offsets depending on the
+    transformation direction. Works with both `Point` and `Intersection` objects.
+
+    Args:
+        point (Intersection | Point): Point or intersection to transform.
+        original_x_start (int): X-axis offset.
+        original_y_start (int): Y-axis offset.
+        to_global (bool, optional): If True, converts from local to global coordinates;
+                                    if False, converts from global to local (default: True).
+
+    Returns:
+        Point: Transformed point with updated coordinates.
+    """
     if isinstance(point, Intersection):
         point = point.point
 
@@ -497,6 +554,23 @@ def transform_point(
 def transform_line(
     original_line: Line, original_img: np.ndarray, original_x_start: int, original_y_start: int, to_global: bool = True
 ) -> Line:
+    """
+    Transforms a line's coordinates between local and global image reference frames.
+
+    The function shifts both endpoints of a line by the provided offsets using
+    `transform_point` and reconstructs a new line from the transformed coordinates.
+
+    Args:
+        original_line (Line): Line object to transform.
+        original_img (np.ndarray): Image used to determine line limits.
+        original_x_start (int): X-axis offset.
+        original_y_start (int): Y-axis offset.
+        to_global (bool, optional): If True, converts from local to global coordinates;
+                                    if False, converts from global to local (default: True).
+
+    Returns:
+        Line: Transformed line object with updated coordinates.
+    """
     pts_source: Iterable[Point] = original_line.limit_to_img(original_img)
     pts_transformed = [transform_point(p, original_x_start, original_y_start, to_global=to_global) for p in pts_source]
     return Line.from_points(*pts_transformed)
@@ -527,6 +601,18 @@ def transform_intersection(
 
 
 def _count_array_sequence_group(arr: np.ndarray) -> int:
+    """
+    Counts the number of consecutive value groups in a sorted integer array.
+
+    A new group is started whenever the difference between adjacent elements
+    exceeds 1. Commonly used to count separate contiguous sequences.
+
+    Args:
+        arr (np.ndarray): One-dimensional sorted array of integers.
+
+    Returns:
+        int: Number of contiguous value groups in the array.
+    """
     counter = 0
     for i, item in enumerate(arr):
         if i > 0:
@@ -546,6 +632,24 @@ def is_court_corner(
     x_range: int = 3,
     y_range: int = 3,
 ) -> bool:
+    """
+    Determines whether a given intersection point corresponds to a court corner in an image.
+
+    The function binarizes and morphologically closes the image, checks if the intersection
+    point lies within a white region, and analyzes the shape of the connected white area
+    to confirm a corner-like pattern.
+
+    Args:
+        img (np.ndarray): RGB input image.
+        intersect_point (Point): Intersection point in real coordinates.
+        original_range (tuple[int, int]): Image width and height for coordinate transformation.
+        bin_thresh (float, optional): Binary threshold ratio (default: 0.8).
+        x_range (int, optional): Horizontal margin for local check (default: 3).
+        y_range (int, optional): Vertical margin for local check (default: 3).
+
+    Returns:
+        bool: True if the intersection matches a court corner pattern, otherwise False.
+    """
     gray = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
     bin_img = (gray > gray.max() * bin_thresh).astype(np.uint8)
 
@@ -596,7 +700,18 @@ def is_court_corner(
 
 def angle_between_lines(line1: Line, line2: Line) -> float | None:
     """
-    Returns the smallest angle in degrees between two lines.
+    Calculates the smallest angle between two lines in degrees.
+
+    The function handles vertical, horizontal, and sloped lines, returning None
+    if both lines are vertical. It computes the absolute angular difference based
+    on line slopes.
+
+    Args:
+        line1 (Line): First line object with a `slope` attribute.
+        line2 (Line): Second line object with a `slope` attribute.
+
+    Returns:
+        float | None: Smallest angle between the two lines in degrees, or None if both are vertical.
     """
     if line1.slope is None and line2.slope is None:
         return None
@@ -621,6 +736,24 @@ def is_inner_sideline(
     min_line_len: int | None = 5,
     min_line_gap: int = 5,
 ) -> bool:
+    """
+    Determines whether the given image represents an inner sideline of a court.
+
+    The function binarizes and skeletonizes the image, detects lines using the
+    probabilistic Hough transform, groups them by slope, and checks if at least
+    two line groups with opposite slope directions form an acute angle (< 90°),
+    indicating an inner sideline pattern.
+
+    Args:
+        img (np.ndarray): RGB input image.
+        bin_thresh (float, optional): Binary threshold ratio (default: 0.8).
+        hough_line_thresh (int, optional): Threshold for Hough line detection (default: 8).
+        min_line_len (int | None, optional): Minimum line segment length (default: 5).
+        min_line_gap (int, optional): Maximum allowed gap between line segments (default: 5).
+
+    Returns:
+        bool: True if the image corresponds to an inner sideline pattern, otherwise False.
+    """
     gray = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
     bin_img = (gray > gray.max() * bin_thresh).astype(np.uint8)
 
@@ -652,6 +785,19 @@ def is_inner_sideline(
 
 
 def transform_annotation(img: np.ndarray, annotation: dict[Literal["x", "y"], float]) -> Point:
+    """
+    Converts a percentage-based annotation into pixel coordinates.
+
+    The function transforms normalized annotation coordinates (in percent of
+    image width and height) into absolute pixel coordinates within the given image.
+
+    Args:
+        img (np.ndarray): Input image used to determine width and height.
+        annotation (dict[Literal["x", "y"], float]): Annotation with 'x' and 'y' values in percentages (0–100).
+
+    Returns:
+        Point: Transformed point in pixel coordinates.
+    """
     height, width = img.shape[:2]
     x = annotation["x"] / 100 * width
     y = annotation["y"] / 100 * height
@@ -659,6 +805,19 @@ def transform_annotation(img: np.ndarray, annotation: dict[Literal["x", "y"], fl
 
 
 def fill_edges_image(edges_img: np.ndarray) -> np.ndarray:
+    """
+    Fills vertical gaps between detected edge pixels in a binary edge image.
+
+    The function connects the topmost and bottommost edge pixels in each column,
+    effectively filling enclosed regions, and applies morphological closing to
+    smooth and finalize the filled area.
+
+    Args:
+        edges_img (np.ndarray): Binary edge image (values 0 or 1).
+
+    Returns:
+        np.ndarray: Binary image with filled vertical regions and closed gaps.
+    """
     h, w = edges_img.shape
     filled = np.zeros_like(edges_img)
 
@@ -673,7 +832,20 @@ def fill_edges_image(edges_img: np.ndarray) -> np.ndarray:
 
 
 def _select_intersection_by_x(intersections: list[Intersection], local_line: Line) -> Intersection | None:
-    """Pick intersection by x: min x if local line slope > 0, else max x."""
+    """
+    Selects an intersection point based on the x-coordinate and line slope.
+
+    If the line has a positive slope, the intersection with the smallest x is chosen;
+    if the slope is negative, the one with the largest x is chosen. For vertical lines
+    (slope is None), the middle intersection is returned.
+
+    Args:
+        intersections (list[Intersection]): List of intersection objects.
+        local_line (Line): Line object with a `slope` attribute.
+
+    Returns:
+        Intersection | None: Selected intersection point, or None if no intersections exist.
+    """
     if not intersections:
         return None
 
@@ -699,6 +871,27 @@ def get_further_outer_baseline_corner(
     min_line_len: int = 10,
     max_line_gap: int = 10,
 ) -> Intersection:
+    """
+    Detects and returns the outer baseline corner intersection furthest along the local line.
+
+    The function applies Canny edge detection, fills edge gaps, detects lines using the
+    probabilistic Hough transform, groups them by slope, and finds valid intersections
+    forming acute (< 90°) angles with opposite slopes. It filters out irrelevant intersections
+    based on pixel patterns along the analyzed line and selects the furthest valid corner
+    using the line’s slope direction.
+
+    Args:
+        img (np.ndarray): RGB input image.
+        local_line (Line): Reference line used to determine direction and slope.
+        cannys_thresh_lower (int): Lower threshold for Canny edge detection.
+        cannys_thresh_upper (int): Upper threshold for Canny edge detection.
+        hough_thresh (int, optional): Threshold for Hough line detection (default: 10).
+        min_line_len (int, optional): Minimum line segment length (default: 10).
+        max_line_gap (int, optional): Maximum allowed gap between line segments (default: 10).
+
+    Returns:
+        Intersection | None: The detected outer baseline corner intersection, or None if not found.
+    """
     img_piece_gray = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
     edges = cv2.Canny(img_piece_gray, cannys_thresh_lower, cannys_thresh_upper)
     filled_edges = fill_edges_image(edges)
@@ -779,7 +972,20 @@ def get_further_outer_baseline_corner(
 
 
 def get_closest_line(lines: list[Line], point: Point) -> Line:
-    """Find the line closest to a point."""
+    """
+    Returns the line closest to a given point.
+
+    The function computes the perpendicular distance between the point and each
+    line (handling both vertical and non-vertical cases) and returns the line
+    with the smallest distance.
+
+    Args:
+        lines (list[Line]): List of line objects with `slope`, `intercept`, and optionally `xv` for vertical lines.
+        point (Point): Point object or tuple (x, y) representing the reference point.
+
+    Returns:
+        Line: The line closest to the given point.
+    """
     x, y = point
     min_dist = float("inf")
     closest = None
@@ -855,6 +1061,21 @@ def find_point_neighbourhood_simple(
 
 
 def find_point_neighbourhood_simple_no_line(point: Point, size: int, img: np.ndarray) -> tuple[np.ndarray, int, int]:
+    """
+    Extracts a square neighborhood around a point within image bounds.
+
+    The function returns a cropped region of the image centered on the given point,
+    constrained by the image dimensions, along with the top-left coordinates of the
+    extracted region.
+
+    Args:
+        point (Point): Center point around which the neighborhood is extracted.
+        size (int): Half-size of the square neighborhood (in pixels).
+        img (np.ndarray): Input image array.
+
+    Returns:
+        tuple[np.ndarray, int, int]: Cropped image region, starting x-coordinate, and starting y-coordinate.
+    """
     height, width = img.shape[0], img.shape[1]
 
     point = point.as_int()
@@ -876,6 +1097,24 @@ def crop_court_field(
     further_outer_baseline_point: Point,
     further_outer_netline_point: Point,
 ) -> np.ndarray:
+    """
+    Crops the court field region from the image based on baseline orientation and key boundary points.
+
+    The function determines the cropping rectangle from the provided baseline and
+    outer boundary points (baseline and netline intersections) and returns the cropped
+    court field area along with its top-left coordinates.
+
+    Args:
+        image (np.ndarray): Input RGB image containing the court.
+        baseline (Line): Reference baseline line used to determine crop direction.
+        closer_outer_baseline_point (Point): Closest outer point on the baseline.
+        closer_outer_netline_point (Point): Closest outer point on the netline.
+        further_outer_baseline_point (Point): Farthest outer point on the baseline.
+        further_outer_netline_point (Point): Farthest outer point on the netline.
+
+    Returns:
+        tuple[np.ndarray, int, int]: Cropped court field image, starting x-coordinate, and starting y-coordinate.
+    """
     x_start, x_end, y_start, y_end = {
         True: (
             further_outer_netline_point.x,
@@ -905,6 +1144,28 @@ def image_to_lines(
     reference_line: Line,
     same_slope_sign: bool = False,
 ) -> list[LineGroup]:
+    """
+    Detects and groups lines from an image based on their slope relative to a reference line.
+
+    The function binarizes and edge-detects the image, extracts lines using the
+    probabilistic Hough transform, filters them by slope direction relative to
+    the reference line, and groups similar lines together.
+
+    Args:
+        image (np.ndarray): RGB input image.
+        bin_thresh (float): Binary threshold ratio for image binarization.
+        cannys_lower_thresh (int): Lower threshold for Canny edge detection.
+        cannys_upper_thresh (int): Upper threshold for Canny edge detection.
+        hough_thresh (int): Threshold for Hough line detection.
+        min_line_len (float): Minimum line segment length.
+        hough_max_line_gap (int): Maximum allowed gap between line segments.
+        reference_line (Line): Line used for slope comparison.
+        same_slope_sign (bool, optional): If True, keeps lines with the same slope sign as the reference;
+                                          otherwise keeps lines with the opposite sign (default: False).
+
+    Returns:
+        list[LineGroup]: Grouped line objects filtered and organized by slope similarity.
+    """
     img_gray = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
     bin_img = (img_gray > img_gray.max() * bin_thresh).astype(np.uint8) * 255
     edges = cv2.Canny(bin_img, cannys_lower_thresh, cannys_upper_thresh)
@@ -974,6 +1235,29 @@ def detect_lines_opposite_slope(
 def create_reference_court(
     ref_img_height: int = 25_000, ref_img_width: int = 11_000, line_thickness: int = 50
 ) -> tuple[dict[str, Point], np.ndarray]:
+    """
+    Creates a synthetic reference tennis court image and returns its key reference points.
+
+    The function draws outer/inner sidelines, baselines, service lines, and the center/net
+    lines on a blank image using predefined metric constants, and returns a dictionary of
+    named reference points (as `Point`) along with the rendered RGB image.
+
+    Args:
+        ref_img_height (int, optional): Output image height in pixels (default: 25_000).
+        ref_img_width (int, optional): Output image width in pixels (default: 11_000).
+        line_thickness (int, optional): Line thickness used for drawing (default: 50).
+
+    Returns:
+        tuple[dict[str, Point], np.ndarray]:
+            - dict[str, Point]: Named reference points:
+                - "closer_outer_netline_point", "closer_outer_baseline_point",
+                  "further_outer_netline_point", "further_outer_baseline_point",
+                  "closer_inner_netline_point", "closer_inner_baseline_point",
+                  "further_inner_netline_point", "further_inner_baseline_point",
+                  "closer_service_point", "further_service_point",
+                  "net_service_point", "centre_service_point".
+            - np.ndarray: The rendered reference court image (RGB).
+    """
     ref_closer_outer_netline_point = 0, COURT_LENGTH_HALF
     ref_closer_outer_baseline_point = 0, LENGTH
     ref_closer_outer_baseline_point_2 = 0, 0
@@ -1048,7 +1332,27 @@ def create_reference_court(
 
 def warp_points(
     ref_points: dict[str, Point], dst_points: dict[str, Point], src_image: np.ndarray, ref_img: np.ndarray, *names: str
-) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+) -> tuple[dict[str, Point], np.ndarray, np.ndarray]:
+    """
+    Warps a reference court to match destination points and maps all reference points.
+
+    Using the named point pairs (`names`) from `ref_points` → `dst_points`, the function
+    estimates a homography, warps `ref_img` to the `src_image` frame, overlays the result,
+    and projects every reference point through the homography.
+
+    Args:
+        ref_points (dict[str, Point]): Reference points in the canonical court.
+        dst_points (dict[str, Point]): Corresponding target points in the source image.
+        src_image (np.ndarray): Source image to align onto (defines output size).
+        ref_img (np.ndarray): Reference court image to be warped.
+        *names (str): Keys of point pairs to use for homography estimation.
+
+    Returns:
+        tuple[dict[str, Point], np.ndarray, np.ndarray]:
+            - dict[str, Point]: All reference points transformed into source-image coordinates.
+            - np.ndarray: Warped reference image (same size as `src_image`).
+            - np.ndarray: Blended overlay (`src_image` + warped reference).
+    """
     ref_points_arr = np.float32([ref_points[n].to_tuple() for n in names])
     dst_points_arr = np.float32([dst_points[n].to_tuple() for n in names])
     H, _ = cv2.findHomography(ref_points_arr, dst_points_arr)
@@ -1067,6 +1371,19 @@ def warp_points(
 
 
 def plot_results(img: np.ndarray, path: Path, pic_name: str, lines: dict[str, Line], points: dict[str, Point]) -> None:
+    """
+    Draws detected points and lines on an image and saves the visualization.
+
+    The function overlays all provided points and lines on a copy of the input image,
+    then saves the resulting visualization to the specified path.
+
+    Args:
+        img (np.ndarray): Input RGB image.
+        path (Path): Directory path where the output image will be saved.
+        pic_name (str): Output image filename.
+        lines (dict[str, Line]): Dictionary of line objects to draw.
+        points (dict[str, Point]): Dictionary of point objects to mark.
+    """
     pic = img.copy()
 
     for point in points.values():
@@ -1085,6 +1402,22 @@ def measure_error(
     ground_truth_points: dict[str, dict[str, float]],
     prefix: str | None = None,
 ) -> dict[str, float]:
+    """
+    Computes Euclidean distance errors between detected and ground-truth points.
+
+    Each ground-truth point (expressed as percentage coordinates) is transformed
+    into pixel coordinates, and its distance to the corresponding detected point
+    is calculated. Results are stored in a dictionary with optional prefixing.
+
+    Args:
+        img (np.ndarray): Image used to convert ground-truth coordinates to pixels.
+        found_points (dict[str, Point]): Detected points keyed by name.
+        ground_truth_points (dict[str, dict[str, float]]): Ground-truth points as normalized coordinates.
+        prefix (str | None, optional): Optional prefix for output keys (default: None).
+
+    Returns:
+        dict[str, float]: Mapping of point names to distance errors in pixels.
+    """
     errors = {}
     for name, pt in found_points.items():
         raw_gtpt = ground_truth_points.get(name)
@@ -1094,9 +1427,27 @@ def measure_error(
         errors.update({key: distance_error})
     return errors
 
+T = TypeVar("T", bound=BaseModel)
 
-def load_config(config_filepath: str | Path, data_model: type[BaseModel]) -> BaseModel:
-    """Load and validate a JSON configuration file into a Pydantic model."""
+def load_config(config_filepath: str | Path, data_model: type[T]) -> T:
+    """
+    Loads a JSON configuration file and validates it against a Pydantic model.
+
+    The function reads and parses a JSON file, validates its structure and content
+    using the specified Pydantic model, and returns the validated configuration.
+    Supports both single-object (dict) and list-based (list of objects) JSON structures.
+
+    Args:
+        config_filepath (str | Path): Path to the JSON configuration file.
+        data_model (type[BaseModel]): Pydantic model class used for validation.
+
+    Returns:
+        BaseModel: Validated configuration instance (or list of instances).
+
+    Raises:
+        FileNotFoundError: If the configuration file does not exist.
+        ValueError: If the JSON structure or validation is invalid.
+    """
     config_path = Path(config_filepath)
 
     if not config_path.is_file():
@@ -1205,6 +1556,20 @@ def validate_data_and_pictures(config_data: list, pictures: list[str]) -> None:
 
 
 def get_point_weights(row: pd.Series) -> float:
+    """
+    Calculates a weighted average error for a set of court points.
+
+    The function applies predefined weights to each point’s distance error
+    (columns ending with "_dist") and returns the weighted mean, giving
+    greater importance to specific key points.
+
+    Args:
+        row (pd.Series): Row containing distance errors for multiple points,
+                         with column names following the pattern "<point_name>_dist".
+
+    Returns:
+        float: Weighted average of distance errors across all valid points.
+    """
     WEIGHTS = {
         "closer_outer_baseline_point": 1,
         "closer_inner_baseline_point": 2,
