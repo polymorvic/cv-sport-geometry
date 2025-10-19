@@ -34,16 +34,19 @@ class GroundTruthCourtPoints(BaseModel):
 
 
 class BinThreshEndlineScan(BaseModel):
+    model_config = ConfigDict(strict=True)
     baseline: float
     netline: float
 
 
 class CannyThreshold(BaseModel):
+    model_config = ConfigDict(strict=True)
     lower: int
     upper: int
 
 
 class ImageParams(BaseModel):
+    model_config = ConfigDict(strict=True)
     pic_name: str
     bin_thresh: float
     bin_thresh_endline_scan: BinThreshEndlineScan
@@ -57,15 +60,14 @@ class ImageParams(BaseModel):
     surface_type: Literal["clay", "another"]
     canny_thresh: CannyThreshold
 
-    class Config:
-        strict = True
-
 
 class TestImageParams(ImageParams):
+    model_config = ConfigDict(strict=True)
     ground_truth_points: GroundTruthCourtPoints
 
 
 class TestConfig(BaseModel):
+    model_config = ConfigDict(strict=True)
     testing_pics_dir: str
     run_name: str
     data: list[TestImageParams]
