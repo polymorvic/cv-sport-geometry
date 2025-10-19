@@ -10,6 +10,7 @@ from .func import (
     _plot_two_lines_on_img,
     check_items_sign,
     crop_court_field,
+    draw_and_display,
     find_net_lines,
     find_point_neighbourhood,
     find_point_neighbourhood_simple,
@@ -137,7 +138,7 @@ class CourtFinder:
                     if net_intersection is not None:
                         return intersect, net_intersection, closer_outer_baseline_point_used_line
 
-    def _find_closer_outer_netpoint(self, line: Line, point: Point, warmup: int = 5) -> Intersection | None:
+    def _find_closer_outer_netpoint(self, line: Line, point: Point, warmup: int = 5) -> tuple[Intersection, Line]:
         net_intersection = None
         intersection_global = None
         i = 0
@@ -168,7 +169,7 @@ class CourtFinder:
                     intersection = local_line.intersection(net_line, img_piece)
 
                     if SETTINGS.debug:
-                        _plot_two_lines_on_img(img_piece, local_line, net_line)
+                        draw_and_display(img_piece, local_line, net_line)
 
                     if intersection is not None and np.sign(net_line.slope) != np.sign(local_line.slope):
                         intersections.append(intersection)
@@ -199,7 +200,6 @@ class CourtFinder:
             local_line = transform_line(unused_line, self.img, *original_range, False)
 
             if new_point.y >= point.y:
-                print("break point")
                 break
             else:
                 point = new_point
@@ -279,10 +279,7 @@ class CourtFinder:
             line = get_closest_line(line_obj, local_point)
 
             if SETTINGS.debug:
-                img_copy = img_piece.copy()
-                pts = line.limit_to_img(img_copy)
-                cv2.line(img_copy, *pts, (255, 0, 0))
-                _plot_objs(img_copy)
+                draw_and_display(img_piece, lines=[line])
 
             return transform_line(line, self.img, *original_range)
 
@@ -322,10 +319,7 @@ class CourtFinder:
         p1, p2 = (x1, y1), (x2, y2)
 
         if SETTINGS.debug:
-            img_copy = img_piece.copy()
-            cv2.circle(img_copy, (x1, y1), 1, (255, 0, 0), -1)
-            cv2.circle(img_copy, (x2, y2), 1, (255, 0, 0), -1)
-            _plot_objs(img_copy)
+            draw_and_display(img_piece, points=[p1, p2])
 
         line = Line.from_points(p1, p2)
         return transform_line(line, self.img, *original_range)
@@ -346,7 +340,7 @@ class CourtFinder:
         warmup: int = 2,
         further_outer_endline_point_tolerance: int = 5,
         searching_line: Literal["net", "base"] = "base",
-    ) -> tuple[Point, Point, Point, Point]:
+    ) -> tuple[Point, Point]:
         options = {
             "net": {
                 "new_point": closer_outer_netpoint,
@@ -516,11 +510,7 @@ class CourtFinder:
         ]
 
         if SETTINGS.debug:
-            img_copy = self.img.copy()
-            for line in global_grouped_lines:
-                pts = line.limit_to_img(img_copy)
-                cv2.line(img_copy, *pts, (255, 0, 0))
-            _plot_objs(img_copy)
+            draw_and_display(self.img, lines=global_grouped_lines)
 
         for line in global_grouped_lines:
             if (net_inter := line.intersection(netline, self.img)) is not None and (
@@ -553,10 +543,7 @@ class CourtFinder:
                 )
 
                 if SETTINGS.debug:
-                    piece_copy = self.img.copy()
-                    cv2.circle(piece_copy, net_inter.point, 2, (255, 0, 0))
-                    cv2.circle(piece_copy, base_inter.point, 2, (0, 0, 255))
-                    _plot_objs(piece_copy)
+                    draw_and_display(self.img, points=[net_inter.point, base_inter.point])
 
                 if netline_condition and baseline_condition:
                     return net_inter.point, line
@@ -619,11 +606,7 @@ class CourtFinder:
         ]
 
         if SETTINGS.debug:
-            img_copy = self.img.copy()
-            for line in global_grouped_lines:
-                pts = line.limit_to_img(img_copy)
-                cv2.line(img_copy, *pts, (255, 0, 0))
-            _plot_objs(img_copy)
+            draw_and_display(self.img, lines=global_grouped_lines)
 
         for line in global_grouped_lines:
             if (closer_inter := line.intersection(closer_inner_sideline, self.img)) is not None and (
@@ -657,10 +640,7 @@ class CourtFinder:
 
                 if closer_line_condition and further_line_condition:
                     if SETTINGS.debug:
-                        img_copy = self.img.copy()
-                        pts = line.limit_to_img(img_copy)
-                        cv2.line(img_copy, *pts, (255, 0, 0))
-                        _plot_objs(img_copy)
+                        draw_and_display(self.img, lines=[line])
 
                     centre_service_point = line.intersection(centre_service_line, self.img).point
                     further_service_point = line.intersection(further_inner_sideline, self.img).point

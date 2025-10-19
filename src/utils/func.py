@@ -3,7 +3,7 @@ import json
 import os
 import random
 from pathlib import Path
-from typing import Iterable, Literal
+from typing import Iterable, Literal, Optional
 
 import cv2
 import matplotlib.pyplot as plt
@@ -1198,10 +1198,44 @@ def _compute_angle(line1: Line, line2: Line) -> float:
     return angle + 180
 
 
-def _plot_two_lines_on_img(img: np.ndarray, line1: Line, line2: Line) -> None:
+def draw_and_display(
+    img: np.ndarray,
+    *,
+    lines: Optional[Iterable[Line]] = None,
+    points: Optional[Iterable[Point]] = None,
+) -> None:
+    """
+    Draw lines and points on an image and display it using a given plotting function.
+
+    Handles both raw point pairs and objects with a `limit_to_img(img)` method.
+
+    Parameters
+    ----------
+    img : np.ndarray
+        Input image in BGR format.
+    lines : Iterable[LineInput], optional
+        Lines to draw. Each item can be a tuple of points ((x1, y1), (x2, y2))
+        or an object exposing `.limit_to_img(img) -> ((x1, y1), (x2, y2))`.
+    points : Iterable[Point], optional
+        Points to draw as small filled circles (x, y).
+    plot_fn : Callable[[np.ndarray], None]
+        Function used to display the image (e.g. `_plot_objs`).
+    make_copy : bool
+        Whether to draw on a copy of the image or modify it in place.
+
+    Returns
+    -------
+    np.ndarray
+        Image with drawings (either a copy or the modified original).
+    """
     img_copy = img.copy()
-    pts1 = line1.limit_to_img(img_copy)
-    pts2 = line2.limit_to_img(img_copy)
-    cv2.line(img_copy, *pts1, (0, 0, 255))
-    cv2.line(img_copy, *pts2, (0, 255, 255))
+    if lines:
+        for line in lines:
+            pts = line.limit_to_img(img_copy) 
+            cv2.line(img_copy, *pts, (255, 0, 0), 1)
+
+    if points:
+        for p in points:
+            cv2.circle(img_copy, p, 1, (255, 0, 0), -1)
+
     _plot_objs(img_copy)
