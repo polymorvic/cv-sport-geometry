@@ -1218,15 +1218,6 @@ def draw_and_display(
         or an object exposing `.limit_to_img(img) -> ((x1, y1), (x2, y2))`.
     points : Iterable[Point], optional
         Points to draw as small filled circles (x, y).
-    plot_fn : Callable[[np.ndarray], None]
-        Function used to display the image (e.g. `_plot_objs`).
-    make_copy : bool
-        Whether to draw on a copy of the image or modify it in place.
-
-    Returns
-    -------
-    np.ndarray
-        Image with drawings (either a copy or the modified original).
     """
     img_copy = img.copy()
     if lines:
