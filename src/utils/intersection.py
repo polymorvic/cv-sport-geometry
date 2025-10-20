@@ -1,11 +1,8 @@
-from __future__ import annotations
-
 from typing import TYPE_CHECKING, Self
 
 import numpy as np
 
 from .common import Hashable
-from .func import _compute_angle
 
 if TYPE_CHECKING:
     from .lines import Line
@@ -17,7 +14,7 @@ class Intersection(Hashable):
     Represents the intersection point of two lines and the angle between them.
     """
 
-    def __init__(self, line1: Line, line2: Line, intersection_point: Point) -> None:
+    def __init__(self, line1: 'Line', line2: 'Line', intersection_point: 'Point') -> None:
         """
         Initialize the Intersection object.
 
@@ -29,7 +26,7 @@ class Intersection(Hashable):
         self.line1 = line1
         self.line2 = line2
         self.point = intersection_point
-        self.angle = _compute_angle(self.line1, self.line2)
+        self.angle = self._compute_angle(self.line1, self.line2)
 
     def __repr__(self) -> str:
         """
@@ -38,7 +35,7 @@ class Intersection(Hashable):
             Lines are shown in order of slope (lower slope first).
         """
 
-        def format_line(line: Line) -> str:
+        def format_line(line: 'Line') -> str:
             """Helper function to format a line equation."""
             if line.xv is not None:
                 return f"x = {line.xv:.2f}"
@@ -53,7 +50,7 @@ class Intersection(Hashable):
 
         return f"Point {self.point} line1: [{line1_eq}] line2: [{line2_eq}]"
 
-    def _key_(self) -> tuple[Point, tuple[float, float]]:
+    def _key_(self) -> tuple['Point', tuple[float, float]]:
         """
         Returns a tuple of identifying attributes used for hashing and equality comparison.
         Links the intersection point with both lines for unique identification.
@@ -63,7 +60,7 @@ class Intersection(Hashable):
                 sorted by slope (lower slope first, vertical lines last) to ensure consistent ordering.
         """
 
-        def sort_key(line: Line) -> tuple[float, float]:
+        def sort_key(line: 'Line') -> tuple[float, float]:
             primary = line.slope if line.slope is not None else np.inf
             secondary = line.xv if line.xv is not None else -np.inf
             return (primary, secondary)
@@ -87,7 +84,7 @@ class Intersection(Hashable):
         return self.point.distance(another_intersection.point)
     
 
-    def other_line(self, used: Line) -> Line:
+    def other_line(self, used: 'Line') -> 'Line':
         """
         Return the line from this intersection that is NOT `used`.
         Raises ValueError if `used` doesn't belong to this intersection.
@@ -97,3 +94,25 @@ class Intersection(Hashable):
         if self.line2 is used or self.line2._key_() == used._key_():
             return self.line1
         raise ValueError("The provided line does not belong to this intersection.")
+    
+
+    def _compute_angle(self, line1: 'Line', line2: 'Line') -> float:
+        """Compute the angle in degrees between two Line objects.
+
+        Args:
+            line1 (Line): First line.
+            line2 (Line): Second line.
+
+        Returns:
+            float: Angle in degrees between the two lines.
+        """
+        if line1.xv is None and line2.xv is not None:
+            angle = 90 - line1.theta
+        elif line1.xv is not None and line2.xv is None:
+            angle = 90 - line2.theta
+        elif line1.slope * line2.slope == -1:
+            angle = 90
+        else:
+            angle = np.rad2deg(np.arctan((line2.slope - line1.slope) / (1 + line1.slope * line2.slope)))
+
+        return angle + 180
