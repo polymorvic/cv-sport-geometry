@@ -185,7 +185,7 @@ class CourtFinder:
                     intersection = local_line.intersection(net_line, img_piece)
 
                     if SETTINGS.debug:
-                        draw_and_display(img_piece, local_line, net_line)
+                        draw_and_display(img_piece, lines=[local_line, net_line])
 
                     if intersection is not None and np.sign(net_line.slope) != np.sign(local_line.slope):
                         intersections.append(intersection)
@@ -334,18 +334,6 @@ class CourtFinder:
         img_gray = cv2.cvtColor(img_piece, cv2.COLOR_RGB2GRAY)
 
         if surface_type == "clay":
-
-            edges = cv2.Canny(img_gray, 150, 500)
-
-            lines = cv2.HoughLinesP(edges, 1, np.pi / 180, threshold=20, minLineLength=50, maxLineGap=10)
-            lines = [] if lines is None else lines
-
-            line_obj = [Line.from_hough_line(line[0]) for line in lines]
-            line_obj = [
-                line
-                for line in line_obj
-                if line.slope is not None and np.sign(line.slope) != np.sign(prev_local_line.slope)
-            ]
 
             line_obj = detect_lines_opposite_slope(
                 img_gray,
