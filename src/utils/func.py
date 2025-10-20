@@ -1489,7 +1489,7 @@ def compose_court_data(
     centre_service_line: Line,
     service_line: Line,
     data: GroundTruthCourtPoints = None,
-) -> tuple[dict[str, Point], dict[str, Line], dict[str, dict[str, int]]]:
+) -> tuple[dict[str, Point], dict[str, Line], dict[str, dict[str, float]]]:
     """
     Compose the destination and ground truth court geometry dictionaries.
     ground_truth_points are transformed into {"x": ..., "y": ...} format.
