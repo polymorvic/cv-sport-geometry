@@ -59,8 +59,8 @@ def run(config_dir: Path = Path('config/run.config.json'), pics_dir: Path = Path
 
         plot_results(pic, path, param.pic_name, dst_lines, dst_points)
 
-        if path.exists() and not any(path.iterdir()):
-            path.rmdir()
+    if path.exists() and not any(path.iterdir()):
+        path.rmdir()
 
 
 if __name__ == "__main__":
