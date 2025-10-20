@@ -20,11 +20,7 @@ from utils.schemas import ImageParams
 def run(result_dir: Path = Path("results/run")) -> None:
     """
     Detects and reconstructs tennis-court geometry from input images and saves result plots.
-
-    Args:
-        result_dir: Base output directory. Results are written to
-            `{result_dir}/{TIMESTAMP_STRING}/`.
-
+    
     Workflow (concise):
         1) Load image-processing params from `config/run.config.json` and RGB images from `data/run`.
         2) For each image:
@@ -45,6 +41,10 @@ def run(result_dir: Path = Path("results/run")) -> None:
         `load_config`, `get_pictures`, `validate_data_and_pictures`,
         `apply_hough_transformation`, `Line`, `group_lines`, `CourtFinder`,
         `compose_court_data`, `plot_results`.
+
+    Args:
+        result_dir: Base output directory. Results are written to
+            `{result_dir}/{TIMESTAMP_STRING}/`.
     """
     
     path = result_dir / TIMESTAMP_STRING
