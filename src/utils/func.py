@@ -3,7 +3,7 @@ import json
 import os
 import random
 from pathlib import Path
-from typing import Iterable, Literal, Optional, TypeVar
+from typing import Iterable, Literal, Optional
 
 import cv2
 import matplotlib.pyplot as plt
@@ -870,7 +870,7 @@ def get_further_outer_baseline_corner(
     hough_thresh: int = 10,
     min_line_len: int = 10,
     max_line_gap: int = 10,
-) -> Intersection:
+) -> Intersection | None:
     """
     Detects and returns the outer baseline corner intersection furthest along the local line.
 
@@ -1190,17 +1190,17 @@ def image_to_lines(
 
 
 def detect_lines_opposite_slope(
-    image,
+    image: np.ndarray,
     canny_lower: float,
     canny_upper: float,
     *,
     hough_threshold: int,
     min_line_length: float,
     max_line_gap: float,
-    ref_line,          
+    ref_line: Line,          
     rho: float = 1.0,
     theta: float = np.pi / 180,
-):
+) -> list[Line]:
     """
     Run Canny + HoughLinesP, convert to Line objects, and keep only lines whose
     slope sign differs from ref_line.slope.
@@ -1219,12 +1219,8 @@ def detect_lines_opposite_slope(
     )
     raw = [] if raw is None else raw
 
-    line_objs = [Line.from_hough_line(l[0]) for l in raw]
-    ref_slope = getattr(ref_line, "slope", None)
-    if ref_slope is None:
-        return [ln for ln in line_objs if ln.slope is not None]
-
-    ref_sign = np.sign(ref_slope)
+    line_objs = [Line.from_hough_line(line[0]) for line in raw]
+    ref_sign = np.sign(ref_line.slope)
     return [
         ln
         for ln in line_objs
@@ -1427,9 +1423,8 @@ def measure_error(
         errors.update({key: distance_error})
     return errors
 
-T = TypeVar("T", bound=BaseModel)
 
-def load_config(config_filepath: str | Path, data_model: type[T]) -> T:
+def load_config[T: BaseModel](config_filepath: str | Path, data_model: type[T]) -> T:
     """
     Loads a JSON configuration file and validates it against a Pydantic model.
 
@@ -1593,17 +1588,7 @@ def get_point_weights(row: pd.Series) -> float:
     return weighted_sum / sum(applied_weights)
 
 
-def _compute_angle(line1: Line, line2: Line) -> float:
-    if line1.xv is None and line2.xv is not None:
-        angle = 90 - line1.theta
-    elif line1.xv is not None and line2.xv is None:
-        angle = 90 - line2.theta
-    elif line1.slope * line2.slope == -1:
-        angle = 90
-    else:
-        angle = np.rad2deg(np.arctan((line2.slope - line1.slope) / (1 + line1.slope * line2.slope)))
 
-    return angle + 180
 
 
 def draw_and_display(
