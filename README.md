@@ -10,25 +10,24 @@ The goal of this project is to accurately identify and extract the main lines, i
 
 Key libraries used:
 <ul> 
-    <li>numpy</li>
-    <li>opencv-python</li>
-    <li>matplotlib</li>
-    <li>pydantic</li>
-    <li>scikit-image</li>
-    <li>label-studio</li>
+  <li>numpy</li>
+  <li>opencv-python</li>
+  <li>matplotlib</li>
+  <li>pydantic</li>
+  <li>scikit-image</li>
+  <li>label-studio</li>
 </ul>
 
 Key computer vision concepts included:
 <ul> 
-    <li>binarization and thresholding</li>
-    <li>color channels</li>
-    <li>the Probabilistic Hough Transform (PHT)</li>
-    <li>perspective transformation</li>
-    <li>skeletonization</li>
-    <li>Canny Edge Detection</li>
-    <li>morphological operations</li>
-    <li>contour detection</li>
-    <li></li>
+  <li>color space analysis</li>
+  <li>binarization and thresholding</li>
+  <li>Canny Edge Detection</li>
+  <li>the Probabilistic Hough Transform (PHT)</li>
+  <li>morphological operations</li>
+  <li>skeletonization</li>
+  <li>contour detection</li>
+  <li>perspective transformation</li>
 </ul>
 
 
@@ -126,7 +125,7 @@ It should be the lowest point on the court in the image.</li>
 </ol>
 
 
-By connecting the corresponding points, we obtain the following lines that define the playing field and its main areas.:
+By connecting the corresponding points, we obtain the following lines that define the playing field and its main areas:
 <ol>
     <li>closer_outer_sideline</li>
     <li>baseline</li>
