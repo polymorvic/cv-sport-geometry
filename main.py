@@ -2,9 +2,9 @@ from pathlib import Path
 
 import tyro
 
-from src.utils.const import TIMESTAMPT_STRING
-from src.utils.court_finder import CourtFinder
-from src.utils.func import (
+from utils.const import TIMESTAMP_STRING
+from utils.court_finder import CourtFinder
+from utils.func import (
     apply_hough_transformation,
     compose_court_data,
     get_pictures,
@@ -13,8 +13,8 @@ from src.utils.func import (
     plot_results,
     validate_data_and_pictures,
 )
-from src.utils.lines import Line
-from src.utils.schemas import ImageParams
+from utils.lines import Line
+from utils.schemas import ImageParams
 
 
 def run(result_dir: Path = Path("results/run")) -> None:
@@ -23,7 +23,7 @@ def run(result_dir: Path = Path("results/run")) -> None:
 
     Args:
         result_dir: Base output directory. Results are written to
-            `{result_dir}/{TIMESTAMPT_STRING}/`.
+            `{result_dir}/{TIMESTAMP_STRING}/`.
 
     Workflow (concise):
         1) Load image-processing params from `config/run.config.json` and RGB images from `data/run`.
@@ -41,13 +41,13 @@ def run(result_dir: Path = Path("results/run")) -> None:
         - Prints errors; deletes the output dir if no files were produced.
 
     Notes:
-        Requires: TIMESTAMPT_STRING, `ImageParams`, and helpers:
+        Requires: TIMESTAMP_STRING, `ImageParams`, and helpers:
         `load_config`, `get_pictures`, `validate_data_and_pictures`,
         `apply_hough_transformation`, `Line`, `group_lines`, `CourtFinder`,
         `compose_court_data`, `plot_results`.
     """
     
-    path = result_dir / TIMESTAMPT_STRING
+    path = result_dir / TIMESTAMP_STRING
     path.mkdir(exist_ok=True, parents=True)
 
     params = load_config("config/run.config.json", ImageParams)
