@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 import copy
 from typing import Literal, Self
 
@@ -60,7 +58,7 @@ class Line(Hashable):
         """
         return f"y = {self.slope} * x + {self.intercept}"
 
-    def copy(self) -> Line:
+    def copy(self) -> Self:
         """
         Creates a deep copy of the line.
 
@@ -164,7 +162,6 @@ class Line(Hashable):
         """
         main_x, main_y = main_point
 
-        # Vertical line: return two points offset by ±distance along the y-axis
         if self.xv is not None:
             return Point(int(main_x), int(main_y - distance)), Point(int(main_x), int(main_y + distance))
 
@@ -174,15 +171,12 @@ class Line(Hashable):
         m = self.slope
         b = self.intercept
 
-        # Solve: (x - main_x)^2 + (a*x + b - main_y)^2 = distance^2
-        # This simplifies to a quadratic equation in x: A*x^2 + B*x + C = 0
         A = 1 + m**2
         B = -2 * main_x + 2 * m * (b - main_y)
         C = main_x**2 + (b - main_y) ** 2 - distance**2
 
         discriminant = B**2 - 4 * A * C
         if discriminant < 0:
-            # No real intersection: distance is too large or point is far from the line
             raise ValueError("No real solution: check if the distance is too large or the point is far from the line.")
 
         sqrt_delta = np.sqrt(discriminant)
@@ -190,7 +184,6 @@ class Line(Hashable):
         x1 = int((-B + sqrt_delta) / (2 * A))
         x2 = int((-B - sqrt_delta) / (2 * A))
 
-        # Get corresponding y values using the line equation
         y1 = int(self.y_for_x(x1))
         y2 = int(self.y_for_x(x2))
 
@@ -235,7 +228,7 @@ class Line(Hashable):
         if y_right is not None and 0 <= y_right <= img_height:
             points.append(Point(img_width, int(y_right)))
 
-        unique_points = list(dict.fromkeys(points))  # removes duplicates while preserving order
+        unique_points = list(dict.fromkeys(points))
 
         if len(unique_points) >= 2:
             return unique_points[0], unique_points[1]
@@ -258,7 +251,6 @@ class Line(Hashable):
         y = self.y_for_x(point.x)
         x = self.x_for_y(point.y)
 
-        # If point is outside defined part of the line
         if y is None or x is None:
             return False
 
@@ -282,7 +274,7 @@ class Line(Hashable):
         return np.degrees(np.arctan(self.slope))
 
     @classmethod
-    def from_hough_line(cls, hough_line: tuple[int, int, int, int]) -> Line:
+    def from_hough_line(cls, hough_line: tuple[int, int, int, int]) -> Self:
         """
         Creates a Line instance from a Hough line segment represented by two points.
 
@@ -296,7 +288,7 @@ class Line(Hashable):
         return cls.from_points((x1, y1), (x2, y2))
 
     @classmethod
-    def from_points(cls, p1: tuple[int, int], p2: tuple[int, int]) -> Line:
+    def from_points(cls, p1: tuple[int, int], p2: tuple[int, int]) -> Self:
         """
         Creates a Line instance from two points.
 
@@ -311,7 +303,6 @@ class Line(Hashable):
         x2, y2 = p2
 
         if x1 == x2:
-            # Vertical line
             slope, intercept = None, None
             xv = x1
         else:
