@@ -301,7 +301,7 @@ class CourtFinder:
 
         return get_closest_line(line_obj, closer_outer_netpoint)
 
-    def find_further_doubles_sideline(
+    def find_further_outer_sideline(
         self,
         further_outer_baseline_point: Point,
         prev_local_line: Line,
@@ -310,7 +310,7 @@ class CourtFinder:
         bin_thresh: float,
         surface_type: str,
     ) -> Line:
-        """Detect the further doubles sideline (far side of the court).
+        """Detect the further outer sideline (far side of the court).
 
         The method initializes a local scan near `further_outer_baseline_point`,
         biases the search using `prev_local_line` slope/angle, applies binary
@@ -326,7 +326,7 @@ class CourtFinder:
             surface_type: String/enum describing the court surface to tune thresholds.
 
         Returns:
-            Line: The detected further doubles sideline
+            Line: The detected further outer sideline
         """
         img_piece, *original_range = find_point_neighbourhood_simple(
             further_outer_baseline_point, offset + extra_offset, self.img, prev_local_line
@@ -863,7 +863,7 @@ def process[T: BaseModel](pic: np.ndarray, param: T) -> tuple[dict[str, Point] |
 
         netline = court_finder.find_netline(closer_outer_netline_point, baseline, param.max_line_gap)
 
-        further_outer_sideline = court_finder.find_further_doubles_sideline(
+        further_outer_sideline = court_finder.find_further_outer_sideline(
             further_outer_baseline_point,
             last_local_line,
             param.offset,
