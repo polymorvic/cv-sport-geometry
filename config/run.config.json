@@ -1,6 +1,6 @@
 [
     {
-        "pic_name": "tc6.webp",
+        "pic_name": "run1.webp",
         "bin_thresh": 0.6,
         "bin_thresh_endline_scan": {"baseline": 0.7, "netline": 0.7},
         "bin_thresh_centre_service_line": 0.65,
@@ -14,7 +14,7 @@
         "canny_thresh": {"lower": 20, "upper": 100}
     },
     {
-        "pic_name": "tc8.jpg",
+        "pic_name": "run2.jpg",
         "bin_thresh": 0.7,
         "bin_thresh_endline_scan": {"baseline": 0.75, "netline": 0.75},
         "bin_thresh_centre_service_line": 0.7,

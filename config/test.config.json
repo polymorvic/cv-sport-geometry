@@ -1,9 +1,9 @@
 {
     "testing_pics_dir": "results/tests",
-    "run_name": "20251015-run2",
+    "run_name": "20251021-run1",
     "data": [
         {
-            "pic_name": "tc1.jpg",
+            "pic_name": "test1.jpg",
             "bin_thresh": 0.7,
             "bin_thresh_endline_scan": {"baseline": 0.75, "netline": 0.8},
             "bin_thresh_centre_service_line": 0.7,
@@ -31,7 +31,7 @@
             }
         },
         {
-            "pic_name": "tc2.jpg",
+            "pic_name": "test2.jpg",
             "bin_thresh": 0.7,
             "bin_thresh_endline_scan": {"baseline": 0.8, "netline": 0.8},
             "bin_thresh_centre_service_line": 0.75,
@@ -59,7 +59,7 @@
             }
         },
         {
-            "pic_name": "tc3.jpg",
+            "pic_name": "test3.jpg",
             "bin_thresh": 0.6,
             "bin_thresh_endline_scan": {"baseline": 0.71, "netline": 0.65},
             "bin_thresh_centre_service_line": 0.55,
@@ -87,7 +87,7 @@
             }
         },
         {
-            "pic_name": "tc4.jpg",
+            "pic_name": "test4.jpg",
             "bin_thresh": 0.7,
             "bin_thresh_endline_scan": {"baseline": 0.8, "netline": 0.55},
             "bin_thresh_centre_service_line": 0.7,
@@ -115,7 +115,7 @@
             }
         },
         {
-            "pic_name": "tc5.jpg",
+            "pic_name": "test5.jpg",
             "bin_thresh": 0.75,
             "bin_thresh_endline_scan": {"baseline": 0.8, "netline": 0.8},
             "bin_thresh_centre_service_line": 0.8,
@@ -143,7 +143,7 @@
             }
         },
         {
-            "pic_name": "tc7.jpg",
+            "pic_name": "test6.jpg",
             "bin_thresh": 0.7,
             "bin_thresh_endline_scan": {"baseline": 0.8, "netline": 0.55},
             "bin_thresh_centre_service_line": 0.7,
