@@ -15,12 +15,13 @@ from utils.func import (
     validate_data_and_pictures,
     warp_points,
 )
-from utils.lines import Line
 from utils.schemas import TestConfig
 
 mpl.rcParams["image.cmap"] = "gray"
 
-def run(config_dir: Path = Path('config/test.config.json'), pics_dir: Path = Path('data/test'), results_df_name: str = 'test_df') -> None:
+def run(config_dir: Path = Path('config/test.config.json'), 
+        pics_dir: Path = Path('data/test'), 
+        results_df_name: str = 'test_df') -> None:
     """
     Batch-detects and reconstructs tennis-court geometry for images in `pics_dir`
     using params from `config_dir`, and saves result plots under

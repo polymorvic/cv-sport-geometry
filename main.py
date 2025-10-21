@@ -13,7 +13,9 @@ from utils.func import (
 from utils.schemas import ImageParams
 
 
-def run(config_dir: Path = Path('config/run.config.json'), pics_dir: Path = Path('data/run'), result_dir: Path = Path("results/run")) -> None:
+def run(config_dir: Path = Path('config/run.config.json'), 
+        pics_dir: Path = Path('data/run'), 
+        result_dir: Path = Path("results/run")) -> None:
     """
     Runs batch tennis-court detection and reconstruction from images in `pics_dir`
     using parameters from `config_dir`, and saves plotted results under

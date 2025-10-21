@@ -797,7 +797,8 @@ class CourtFinder:
                     return centre_service_point, further_service_point, closer_service_point
                 
 
-def process[T: BaseModel](pic: np.ndarray, param: T) -> tuple[dict[str, Point] | None, dict[str, Line] | None, dict[str, dict[str, float]] | None]:
+def process[T: BaseModel](pic: np.ndarray, param: T) -> tuple[dict[str, Point] | None, dict[str, Line] | None, 
+                                                              dict[str, dict[str, float]] | None]:
     """
     Detects and reconstructs tennis court geometry from an input image.
 
