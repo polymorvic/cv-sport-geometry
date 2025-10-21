@@ -805,6 +805,15 @@ def process[T: BaseModel](pic: np.ndarray, param: T) -> tuple[dict[str, Point] |
     and employs CourtFinder logic to locate baseline, netline, sidelines,
     and service lines based on parameter settings.
 
+    Workflow:
+    For each image:
+        - Detect lines (Canny + Hough), build `Line` objects, filter verticals (`xv is None`), and group lines.
+        - Compute all group–group intersections and initialize `CourtFinder`.
+        - Find outer baseline/net points and sidelines; derive baseline and net line.
+        - Scan for inner (singles) baselines and netline endpoints.
+        - Derive centre service line, net service point, court centre, and service line.
+        - Compose destination points/lines and plot/save results.
+
     Args:
         pic: Input court image as a NumPy array.
         param: Pydantic model instance with parameters to proceed the image

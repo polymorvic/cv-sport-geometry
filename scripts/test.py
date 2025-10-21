@@ -21,6 +21,27 @@ from utils.schemas import TestConfig
 mpl.rcParams["image.cmap"] = "gray"
 
 def run(config_dir: Path = Path('config/test.config.json'), pics_dir: Path = Path('data/test'), results_df_name: str = 'test_df') -> None:
+    """
+    Batch-detects and reconstructs tennis-court geometry for images in `pics_dir`
+    using params from `config_dir`, and saves result plots under
+    `{result_dir}/{TIMESTAMP_STRING}/`.
+
+    For each image, calls `process(pic, param)` which:
+      - extracts court lines (Canny+Hough), groups & intersects them,
+      - uses `CourtFinder` to locate outer/inner baselines & netline, doubles/singles
+        sidelines, centre service line, court centre, and service line,
+      - returns dicts of Points and Lines and, if available, ground-truth points.
+    Results are plotted with `plot_results`.
+
+    Side effects:
+      - creates the timestamped output directory and writes plots,
+      - prints per-image errors; removes the run directory if it stays empty.
+
+    Args:
+        config_dir: Path to JSON config for image parameters.
+        pics_dir: Directory with RGB input images.
+        result_dir: Base output directory (run subdir named by `TIMESTAMP_STRING`).
+    """
     config = load_config(config_dir, TestConfig)
     train_pics = get_pictures(pics_dir)["rgb"]
     test_df_rows = []
