@@ -87,14 +87,14 @@ class CourtFinder:
         """
         Finds a baseline-side intersection and its nearest corresponding net-side point.
 
-        This method iterates through all intersections and filters those whose angle 
-        lies between 90 and 270 degrees (i.e., outer baseline side). For each qualifying intersection, 
-        it explores both connected lines to locate the nearest intersection along that line 
+        This method iterates through all intersections and filters those whose angle
+        lies between 90 and 270 degrees (i.e., outer baseline side). For each qualifying intersection,
+        it explores both connected lines to locate the nearest intersection along that line
         that also meets the angular condition.
 
-        Once a candidate line is found, it verifies whether the intersection belongs to 
-        a valid court corner region using `find_point_neighbourhood` and `is_court_corner`. 
-        If so, it proceeds to search for the corresponding intersection point 
+        Once a candidate line is found, it verifies whether the intersection belongs to
+        a valid court corner region using `find_point_neighbourhood` and `is_court_corner`.
+        If so, it proceeds to search for the corresponding intersection point
         closer to the net by calling `_find_closer_outer_netpoint`.
 
         Returns:
@@ -105,7 +105,7 @@ class CourtFinder:
 
         Notes:
             - The `Intersection` objects must have attributes: `angle`, `line1`, `line2`, and `point`.
-            - The method relies on `self.line_intersection_mapping` for retrieving 
+            - The method relies on `self.line_intersection_mapping` for retrieving
             intersections associated with each line.
             - Returns `None` implicitly if no valid baseline–net intersection pair is found.
         """
@@ -337,15 +337,15 @@ class CourtFinder:
         img_gray = cv2.cvtColor(img_piece, cv2.COLOR_RGB2GRAY)
 
         if surface_type == "clay":
-
             line_obj = detect_lines_opposite_slope(
                 img_gray,
-                150, 500,
+                150,
+                500,
                 hough_threshold=20,
                 min_line_length=50,
                 max_line_gap=10,
                 ref_line=prev_local_line,
-                )
+            )
 
             local_point = transform_point(further_outer_baseline_point, *original_range, False)
             line = get_closest_line(line_obj, local_point)
@@ -489,7 +489,8 @@ class CourtFinder:
 
             line_obj = detect_lines_opposite_slope(
                 bin_img,
-                cannys_lower_thresh, cannys_lower_upper,
+                cannys_lower_thresh,
+                cannys_lower_upper,
                 hough_threshold=hough_thresh,
                 min_line_length=self.corner_offset * 0.5,
                 max_line_gap=hough_max_line_gap,
@@ -698,14 +699,14 @@ class CourtFinder:
         Detects and returns the center service line intersection points within a tennis court image.
 
         The method crops the court region between given baselines and netlines, detects candidate lines
-        using edge detection and Hough transform, filters out known court lines, and finds the line 
+        using edge detection and Hough transform, filters out known court lines, and finds the line
         crossing both inner sidelines and the center service line.
 
         Args:
             closer_outer_baseline_point, closer_outer_netline_point, further_outer_baseline_point,
             further_outer_netline_point, closer_inner_baseline_point, further_inner_baseline_point,
             closer_inner_netline_point, further_inner_netline_point (Point): Key court boundary points.
-            baseline, closer_inner_sideline, further_inner_sideline, centre_service_line (Line): 
+            baseline, closer_inner_sideline, further_inner_sideline, centre_service_line (Line):
                 Reference court lines.
             bin_thresh (float): Threshold for image binarization.
             cannys_lower_thresh, cannys_upper_thresh (int): Canny edge detection thresholds.
@@ -717,7 +718,7 @@ class CourtFinder:
         Returns:
             tuple[Point, Point, Point]: (center_service_point, further_service_point, closer_service_point)
                 if found, otherwise None.
-        """   
+        """
         img_piece, *origin = crop_court_field(
             self.img,
             baseline,
@@ -795,10 +796,11 @@ class CourtFinder:
                     closer_service_point = line.intersection(closer_inner_sideline, self.img).point
 
                     return centre_service_point, further_service_point, closer_service_point
-                
 
-def process[T: BaseModel](pic: np.ndarray, param: T) -> tuple[dict[str, Point] | None, dict[str, Line] | None, 
-                                                              dict[str, dict[str, float]] | None]:
+
+def process[T: BaseModel](
+    pic: np.ndarray, param: T
+) -> tuple[dict[str, Point] | None, dict[str, Line] | None, dict[str, dict[str, float]] | None]:
     """
     Detects and reconstructs tennis court geometry from an input image.
 
@@ -842,7 +844,6 @@ def process[T: BaseModel](pic: np.ndarray, param: T) -> tuple[dict[str, Point] |
     court_finder = CourtFinder(intersections, pic)
 
     try:
-
         closer_outer_baseline_intersecetion, closer_outer_netintersection, used_line = (
             court_finder.find_closer_outer_baseline_point()
         )
@@ -975,7 +976,7 @@ def process[T: BaseModel](pic: np.ndarray, param: T) -> tuple[dict[str, Point] |
         if has_gt:
             dst_points, dst_lines, ground_truth_points = compose_court_data(*common_args, param)
             return dst_points, dst_lines, ground_truth_points
-        
+
         dst_points, dst_lines = compose_court_data(*common_args)
         return dst_points, dst_lines, None
 

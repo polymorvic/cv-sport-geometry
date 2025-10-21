@@ -14,7 +14,7 @@ class Intersection(Hashable):
     Represents the intersection point of two lines and the angle between them.
     """
 
-    def __init__(self, line1: 'Line', line2: 'Line', intersection_point: 'Point') -> None:
+    def __init__(self, line1: "Line", line2: "Line", intersection_point: "Point") -> None:
         """
         Initialize the Intersection object.
 
@@ -35,7 +35,7 @@ class Intersection(Hashable):
             Lines are shown in order of slope (lower slope first).
         """
 
-        def format_line(line: 'Line') -> str:
+        def format_line(line: "Line") -> str:
             """Helper function to format a line equation."""
             if line.xv is not None:
                 return f"x = {line.xv:.2f}"
@@ -50,7 +50,7 @@ class Intersection(Hashable):
 
         return f"Point {self.point} line1: [{line1_eq}] line2: [{line2_eq}]"
 
-    def _key_(self) -> tuple['Point', tuple[float, float]]:
+    def _key_(self) -> tuple["Point", tuple[float, float]]:
         """
         Returns a tuple of identifying attributes used for hashing and equality comparison.
         Links the intersection point with both lines for unique identification.
@@ -60,7 +60,7 @@ class Intersection(Hashable):
                 sorted by slope (lower slope first, vertical lines last) to ensure consistent ordering.
         """
 
-        def sort_key(line: 'Line') -> tuple[float, float]:
+        def sort_key(line: "Line") -> tuple[float, float]:
             primary = line.slope if line.slope is not None else np.inf
             secondary = line.xv if line.xv is not None else -np.inf
             return (primary, secondary)
@@ -82,9 +82,8 @@ class Intersection(Hashable):
             float: The Euclidean distance.
         """
         return self.point.distance(another_intersection.point)
-    
 
-    def other_line(self, used: 'Line') -> 'Line':
+    def other_line(self, used: "Line") -> "Line":
         """
         Return the line from this intersection that is NOT `used`.
         Raises ValueError if `used` doesn't belong to this intersection.
@@ -94,9 +93,8 @@ class Intersection(Hashable):
         if self.line2 is used or self.line2._key_() == used._key_():
             return self.line1
         raise ValueError("The provided line does not belong to this intersection.")
-    
 
-    def _compute_angle(self, line1: 'Line', line2: 'Line') -> float:
+    def _compute_angle(self, line1: "Line", line2: "Line") -> float:
         """Compute the angle in degrees between two Line objects.
 
         Args:

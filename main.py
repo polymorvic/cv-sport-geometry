@@ -13,9 +13,11 @@ from utils.func import (
 from utils.schemas import ImageParams
 
 
-def run(config_dir: Path = Path('config/run.config.json'), 
-        pics_dir: Path = Path('data/run'), 
-        result_dir: Path = Path("results/run")) -> None:
+def run(
+    config_dir: Path = Path("config/run.config.json"),
+    pics_dir: Path = Path("data/run"),
+    result_dir: Path = Path("results/run"),
+) -> None:
     """
     Runs batch tennis-court detection and reconstruction from images in `pics_dir`
     using parameters from `config_dir`, and saves plotted results under
@@ -37,7 +39,7 @@ def run(config_dir: Path = Path('config/run.config.json'),
         pics_dir: Directory containing input RGB images.
         result_dir: Base output directory for timestamped results.
     """
-    
+
     path = result_dir / TIMESTAMP_STRING
     path.mkdir(exist_ok=True, parents=True)
 
@@ -47,10 +49,7 @@ def run(config_dir: Path = Path('config/run.config.json'),
     validate_data_and_pictures(params, pics)
 
     for pic, param in zip(pics, params, strict=False):
-
-        dst_points, dst_lines, _ = (
-            res if (res := process(pic, param)) is not None else (None, None, None)
-        )
+        dst_points, dst_lines, _ = res if (res := process(pic, param)) is not None else (None, None, None)
 
         plot_results(pic, path, param.pic_name, dst_lines, dst_points)
 

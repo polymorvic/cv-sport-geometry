@@ -1197,7 +1197,7 @@ def detect_lines_opposite_slope(
     hough_threshold: int,
     min_line_length: float,
     max_line_gap: float,
-    ref_line: Line,          
+    ref_line: Line,
     rho: float = 1.0,
     theta: float = np.pi / 180,
 ) -> list[Line]:
@@ -1221,11 +1221,7 @@ def detect_lines_opposite_slope(
 
     line_objs = [Line.from_hough_line(line[0]) for line in raw]
     ref_sign = np.sign(ref_line.slope)
-    return [
-        ln
-        for ln in line_objs
-        if (ln.slope is not None) and (np.sign(ln.slope) != ref_sign)
-    ]
+    return [ln for ln in line_objs if (ln.slope is not None) and (np.sign(ln.slope) != ref_sign)]
 
 
 def create_reference_court(
@@ -1588,9 +1584,6 @@ def get_point_weights(row: pd.Series) -> float:
     return weighted_sum / sum(applied_weights)
 
 
-
-
-
 def draw_and_display(
     img: np.ndarray,
     *,
@@ -1615,7 +1608,7 @@ def draw_and_display(
     img_copy = img.copy()
     if lines:
         for line in lines:
-            pts = line.limit_to_img(img_copy) 
+            pts = line.limit_to_img(img_copy)
             cv2.line(img_copy, *pts, (255, 0, 0), 1)
 
     if points:
