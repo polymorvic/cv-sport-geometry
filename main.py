@@ -49,9 +49,10 @@ def run(
     validate_data_and_pictures(params, pics)
 
     for pic, param in zip(pics, params, strict=False):
-        dst_points, dst_lines, _ = res if (res := process(pic, param)) is not None else (None, None, None)
+        dst_points, dst_lines, _ = process(pic, param)
 
-        plot_results(pic, path, param.pic_name, dst_lines, dst_points)
+        if dst_points is not None:
+            plot_results(pic, path, param.pic_name, dst_lines, dst_points)
 
     if path.exists() and not any(path.iterdir()):
         path.rmdir()

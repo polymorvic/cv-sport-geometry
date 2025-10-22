@@ -29,6 +29,7 @@ from .func import (
     traverse_line,
 )
 from .lines import Intersection, Line, Point
+from .schemas import ImageParams, TestImageParams
 
 
 class CourtFinder:
@@ -798,7 +799,7 @@ class CourtFinder:
                     return centre_service_point, further_service_point, closer_service_point
 
 
-def process[T: BaseModel](
+def process[T: (ImageParams, TestImageParams)](
     pic: np.ndarray, param: T
 ) -> tuple[dict[str, Point] | None, dict[str, Line] | None, dict[str, dict[str, float]] | None]:
     """

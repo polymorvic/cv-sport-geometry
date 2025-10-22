@@ -88,12 +88,12 @@ Below are examples of tennis courts that **meet** and **do not meet** the projec
 
   <div>
     <strong>compliant</strong><br>
-    <img src="readme_assets/tc4.jpg" alt="Valid tennis court" width="300" height="200">
+    <img src="assets/compliant-example.jpg" alt="Valid tennis court" width="300" height="200">
   </div>
 
   <div>
     <strong>non-compliant</strong><br>
-    <img src="readme_assets/tennis1.jpg" alt="Invalid tennis court" width="300" height="200">
+    <img src="assets/non-compliant-example.jpg" alt="Invalid tennis court" width="300" height="200">
   </div>
 
 </div>

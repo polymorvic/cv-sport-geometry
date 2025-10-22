@@ -56,11 +56,9 @@ def run(
         path = Path(config.testing_pics_dir) / config.run_name
         path.mkdir(exist_ok=True, parents=True)
 
-        dst_points, dst_lines, ground_truth_points = (
-            res if (res := process(train_pic, data)) is not None else (None, None, None)
-        )
+        dst_points, dst_lines, ground_truth_points = process(train_pic, data)
 
-        if res is None:
+        if ground_truth_points is None:
             errors = dict.fromkeys(dst_points.keys(), None)
             scenario_errors = []
             row_dict = {"pic_index": i, "pic_name": data.pic_name, **errors}
@@ -82,9 +80,7 @@ def run(
 
         for (scenario_name, _), err_dict in zip(SCENARIOS, scenario_errors, strict=False):
             if isinstance(err_dict, dict):
-                # row_dict = {f"{scenario_name}_{k}": v for k, v in err_dict.items()}
-                for k, v in err_dict.items():
-                    row_dict[f"{scenario_name}_{k}"] = v
+                row_dict.update({f"{scenario_name}_{k}": v for k, v in err_dict.items()})
 
         test_df_rows.append(row_dict)
 
