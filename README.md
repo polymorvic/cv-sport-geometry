@@ -217,3 +217,157 @@ Each valid intersection is represented as an **`Intersection` object**, which st
 An example of a single intersection found below:<br>
 ![line_groups](assets/pre4_intersection_example.png)
 
+### 2. Finding both `closer_outer_baseline_point`, `closer_outer_netline_point` and `closer_outer_sideline `
+
+At initialization, all detected intersections are **deduplicated and sorted** in descending order of their vertical position (`y` coordinate):  
+points closer to the bottom of the image (i.e., closer to the camera) come first.  
+This ordered list is stored in **`self.intersections`** and serves as the starting dataset for locating specific court features.
+
+The algorithm first iterates through all detected intersections and filters those located on the **outer baseline side** of the court (angles between 90° and 270°).  
+For each candidate intersection:
+- It checks both connected lines and searches along them for the **nearest valid intersection** with a similar orientation.  
+- The local image region around the point is analyzed to verify whether it forms a **true court corner**.  
+- If confirmed, the algorithm proceeds along the same line toward the **net**, using a stepwise traversal.
+
+During this traversal:
+- The scan moves upward along the line, skipping the first few steps to avoid local noise.  
+- At each step, a thin image stripe is analyzed for **net-line candidates**.  
+- When a valid net segment is found, the algorithm computes the **intersection** between the scanning line and the detected net line.  
+- The first valid intersection (with opposite line slopes) is selected and transformed back to global image coordinates.
+
+Finally, the following objects should be found:
+- the **outer-baseline intersection** (closest corner to the camera),  
+- the corresponding **net intersection** found along the same sideline,  
+- and the **line** used to connect them.  
+If no valid pair is found, the method returns nothing and further proceeding is not possible.
+
+Step 2 results below:<br>
+![step2](assets/step2.png)
+
+### 3. Finding `further_outer_baseline_point` and `baseline`
+
+Starting from the previously detected **closer outer baseline intersection**,  
+the algorithm continues scanning **along the same sideline** but in the direction away from the camera  
+to locate the **further outer baseline** (the opposite baseline).
+
+- It switches to the **unused line** connected with the starting intersection  
+  (the one not used in the previous step).
+- The algorithm then **traverses step by step** along this line, moving upward on the image.
+- For each step, it extracts a **local image region** and applies **Canny edge detection**
+  followed by **Hough transform** to detect potential line segments.
+- These segments are analyzed in `get_further_outer_baseline_corner`,  
+  which looks for a **valid outer baseline corner** — an intersection of two lines
+  forming an acute angle with opposite slopes.
+- Once a valid intersection is found, it is **transformed back to global coordinates**
+  and returned together with the corresponding local line.
+
+In short: this step extends the search beyond the near baseline  
+to detect the **far-side baseline** using edge and line detection along the same direction.
+
+Step 3 results below:<br>
+![step3](assets/step3.png)
+
+
+### 4. Finding `netline`
+
+The algorithm determines the **net line** that divides the two halves of the court.
+
+Starting from the **closer outer net intersection** (previously found), it:
+- Moves vertically upward through the image along the expected direction of the **net**.  
+- At each step, it analyzes a narrow horizontal image region to detect **linear edge patterns** that match the net’s visual characteristics (thin, dark, nearly horizontal).  
+- Detected candidates are refined using **edge detection and Hough transform**,  
+  grouping short horizontal segments into a consistent, continuous **net line**.  
+- Once a valid net pattern is confirmed, it computes the corresponding **Line object**, representing the global net line in the image space.
+
+In summary: this step uses the previously located reference point to **trace and define the full net line**,  
+which serves as a crucial axis for separating and aligning all further geometric computations on the court.
+
+Step 4 results below:<br>
+![step4](assets/step4.png)
+
+
+### 5. Finding `further_outer_sideline` and `further_outer_netline_point`
+
+The algorithm detects the **further outer sideline** — the far doubles boundary on the opposite side of the court.
+
+Starting from the **further outer baseline intersection** and referencing the `netline`, it:
+- Searches the **upper region** of the image for visual structures aligned with the expected sideline direction.  
+- Extracts **contours** from the image to identify elongated, nearly vertical shapes corresponding to potential court boundaries.  
+- Depending on the **court surface type**, the detection strategy changes:
+  - For **clay courts**, where lines are darker and often partially obscured by surface dust,  
+    the algorithm relies more on **contour geometry** and positional consistency.  
+  - For **hard and grass courts**, it emphasizes **edge-based detection** using Canny and Hough transformations.  
+- Among all candidates, it selects the contour or line that is **most parallel** to the closer outer sideline and forms a valid intersection with the **net line** near the top of the image.
+
+At this stage, the algorithm also determines the `further_outer_netline_point`,  
+defined as the **intersection between the detected net line and the further outer sideline**.  
+This point completes the outer boundary definition of the tennis court.
+
+Step 5 results below:<br>
+![step5](assets/step5.png)
+
+### 6. Scanning both endlines to find inner points 
+
+Goal: find the **inner pair** of intersections on the selected endline — i.e.,  
+- for **baseline** scan → `closer_inner_baseline_point`, `further_inner_baseline_point`,  
+- for **netline** scan → `closer_inner_netline_point`, `further_inner_netline_point`
+
+How it works (common logic):
+- **Choose context**: run in **`base`** or **`net`** mode. Each mode sets the **start point**, the **endline** to scan along, and the **far outer reference point** (for dedup tolerance).
+- **Traverse along the endline** (window by window), with an initial **warm-up** to skip unstable steps.
+- In each window:
+  - Convert to **grayscale**, build a **binary mask** using a local threshold `bin_thresh · max(gray)`.
+  - **Detect lines with slope opposite** to the scanned endline (Canny → Hough), then **group** them.
+  - For each grouped candidate (`min`/`max` representative), compute:
+    - its **intersection with the netline** and keep only those lying **between the outer net points** (x-range gate),
+    - its **intersection with the scanned endline**, discarding near-duplicates within a **tolerance** around the far-outer endline point.
+  - Record valid pairs into **`endline_points_min`** and **`endline_points_max`**.
+- **Finalize**: the **first `min`** and the **last `max`** endline intersections define the **closer** and **further** inner points, respectively.
+
+net vs. base specifics:
+- **`searching_line="base"`**: start from `closer_outer_baseline_point`; dedupe vs. `further_outer_baseline_point`. Output: inner **baseline** endpoints.
+- **`searching_line="net"`**: start from `closer_outer_netline_point`; dedupe vs. `further_outer_netline_point`. Additionally, the local **net segment** is drawn into the binary mask to stabilize detections. Output: inner **netline** endpoints.
+
+After both scans are complete, connecting the corresponding **inner baseline** and **inner netline** points yields:
+- the **`closer_inner_sideline`** — between `closer_inner_baseline_point` and `closer_inner_netline_point`,  
+- and the **`further_inner_sideline`** — between `further_inner_baseline_point` and `further_inner_netline_point`.
+
+These lines represent the **inner singles boundaries** of the tennis court.
+
+Step 6 results below:<br>
+![step6](assets/step6.png)
+
+### 7. Detecting the `net_service_point` and `centre_service_line`
+
+This step focuses on detecting the **central vertical axis** of the service area —  
+the line that divides the two service boxes and intersects the net.
+
+The algorithm:
+- Starts from the **midpoint between the inner sidelines**, which defines the approximate search zone for the court’s **centre line**.  
+- Extracts a **narrow vertical region** around this area and applies **edge detection** (Canny) followed by the **Probabilistic Hough Transform** to find thin, nearly vertical line segments.  
+- Groups detected segments and selects the most stable one — the **centre service line**.  
+- Computes its **intersection with the net line**, defining the `net_service_point` (the midpoint on the net where both service boxes meet).  
+- Validates the detection based on geometric symmetry: the identified centre line must lie roughly halfway between the two inner sidelines.
+
+The resulting outputs are:
+- the `centre_service_line` (vertical divider of the service area),  
+- and the `net_service_point` (its crossing with the net line).
+
+Step 7 results below:<br>
+![step7](assets/step7.png)
+
+
+### 8. Detecting the Court Centre Point
+
+The final step identifies the **central reference point** of the court — the geometric centre where the **centre service line** intersects the **service line**.
+
+The algorithm:
+- Uses the previously detected **centre service line** and **service line** as inputs.  
+- Computes their **intersection point**, which defines the **`centre_service_point`** — the midpoint of the entire playing field.  
+- This point serves as a **key geometric anchor**, ensuring correct alignment and proportional scaling of all other detected structures.  
+- If either of the lines is missing or unreliable, the method estimates the centre position based on the **average x-coordinate** between both inner sidelines and the **midpoint** between the service boxes.
+
+The result — `centre_service_point` — represents the exact centre of the court, completing the detection of all 12 reference points used to reconstruct the full tennis court geometry.
+
+Step 8 results below:<br>
+![step8](assets/step8.png)
