@@ -123,6 +123,40 @@ By connecting the corresponding points, we obtain the following lines that defin
 
 ## Algorithm Overview
 
+### Input Parameters
+
+Before the image can be processed, the algorithm requires a set of predefined **input parameters** that control various thresholding and detection stages.  These parameters directly influence the sensitivity of edge detection, line merging, and intersection finding.
+
+Example configuration:
+```json
+{
+  "bin_thresh": 0.7,
+  "bin_thresh_endline_scan": {"baseline": 0.75, "netline": 0.8},
+  "bin_thresh_centre_service_line": 0.7,
+  "max_line_gap": 10,
+  "max_line_gap_centre_service_line": 100,
+  "hough_thresh": 20,
+  "min_line_len_ratio": 0.2,
+  "offset": 20,
+  "extra_offset": 15,
+  "surface_type": "another",
+  "canny_thresh": {"lower": 20, "upper": 100}
+}
+```
+
+| **Parameter**                                      | **Description**                                                                           |
+| -------------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| `bin_thresh`                                       | Base binarization threshold for general court line detection.                             |
+| `bin_thresh_endline_scan`                          | Thresholds for scanning along the baseline and netline.                                   |
+| `bin_thresh_centre_service_line`                   | Threshold used during central service line extraction.                                    |
+| `max_line_gap`, `max_line_gap_centre_service_line` | Maximum gap allowed between merged line segments.                                         |
+| `hough_thresh`                                     | Minimum number of votes in Hough Transform for a line to be considered valid.             |
+| `min_line_len_ratio`                               | Relative minimal length of accepted line segments.                                        |
+| `offset`, `extra_offset`                           | Pixel-based shifts applied during region scanning to stabilize local detections.          |
+| `surface_type`                                     | Defines court surface type (`clay`, `hard`, `grass`, etc.), adjusting detection strategy. |
+| `canny_thresh`                                     | Lower and upper thresholds for Canny edge detection.                                      |
+
+
 ### 1. Preliminary Image Processing
 
 The purpose of the preprocessing stage is to **load the image and detect the line segments** that will later be merged into full **court lines**. The lines will then be used to compute their **intersection points**, which represent **potential key locations** on the tennis court.
@@ -371,3 +405,147 @@ The result — `centre_service_point` — represents the exact centre of the cou
 
 Step 8 results below:<br>
 ![step8](assets/step8.png)
+
+## Error Measurement – Solution Evaluation
+
+To assess the accuracy and reliability of the algorithm, a dedicated **evaluation procedure** was conducted.
+
+The algorithm was developed and tested based on **6 reference images** of tennis courts. 
+
+| <img src="assets/test1.jpg" alt="Valid tennis court" width="300" height="200"> | <img src="assets/test2.jpg" alt="Valid tennis court" width="300" height="200"> | <img src="assets/test3.jpg" alt="Valid tennis court" width="300" height="200"> |
+| ------------------------------------------------------------------------------ | ------------------------------------------------------------------------------ | ------------------------------------------------------------------------------ |
+| <img src="assets/test4.jpg" alt="Valid tennis court" width="300" height="200"> | <img src="assets/test5.jpg" alt="Valid tennis court" width="300" height="200"> | <img src="assets/test6.jpg" alt="Valid tennis court" width="300" height="200"> |
+
+
+Each image was manually annotated using **Label Studio**, where all **12 key points** of the court were marked to form the **ground truth** dataset. 
+
+![label-studio](assets/label-studio-example.png)
+
+The coordinates of these manually labeled points were exported and stored in the file **`test.config.json`**.  
+This configuration file allows a direct comparison between:
+- the **points detected automatically** by the algorithm, and  
+- their **corresponding ground truth** counterparts.
+
+For each point, the **Euclidean distance** between the detected position and the true one is computed as:
+
+$$
+\text{error} = \sqrt{(x_{\text{pred}} - x_{\text{gt}})^2 + (y_{\text{pred}} - y_{\text{gt}})^2}
+$$
+
+This metric quantifies the **pixel-level deviation** of the detected key points.  
+Lower values indicate higher geometric precision of the detection.
+
+The evaluation results across the 6 test images are summarized as follows:
+
+PLACEHOLDER -----
+
+## Perspective Transformation
+
+In the final stage of processing, the algorithm performs a **perspective transformation** that allows mapping between the **real tennis court geometry** and its **representation in the image**.
+
+To achieve this, a **synthetic reference court** is first created — a perfectly scaled, flat representation of a tennis court with all key structural elements (outer and inner sidelines, baselines, service lines, and the net/center lines).  
+Each of its characteristic points is defined in precise metric proportions, forming a **reference coordinate system** that serves as a geometric template for real images.
+
+Once this reference model is built, the algorithm performs a **homography-based perspective warp** between:
+- a selected subset of **corresponding points** (usually at least four) detected in the input image, and  
+- the **reference points** from the synthetic court.
+
+Using these pairs, the transformation matrix (homography) is estimated, enabling the algorithm to:
+- **project all remaining reference points** into the image plane, and  
+- **overlay the synthetic court** onto the detected court in the original image.
+
+This process makes it possible to reconstruct the **entire geometry** of the court even when only a **minimum number of points** (typically four or more) are found directly by the detection algorithm — the rest are obtained automatically through projection.
+
+The same procedure also allows for **quantitative error evaluation**:  
+the projected points obtained through perspective transformation are compared against their **ground truth** positions, and their pixel-level deviations are measured under various scenarios.  
+This makes it possible to verify whether using **homography-based projection** yields **lower positional errors** than detecting every point purely through classical algorithmic methods.
+
+Overall, the perspective transformation step ensures full geometric consistency of the reconstructed tennis court and provides a powerful way to validate and refine the accuracy of the overall detection pipeline.
+
+### Projection Error Summary
+
+The quantitative evaluation of the **perspective transformation** was performed across multiple test configurations, each using a different subset of detected points for homography estimation.  
+For every configuration, all remaining reference points were projected onto the image and compared with their ground truth locations.
+
+Among all tested setups, the **best-performing scenario** — using four high-confidence corner points  
+(`closer_outer_baseline_point`, `further_outer_baseline_point`, `closer_outer_netline_point`, and `further_outer_netline_point`) — achieved the following results:
+
+PLACEHOLDER ---
+
+These results confirm that under optimal conditions,  
+the **homography-based perspective transformation** allows the algorithm to reconstruct  
+the full set of key points with **subpixel-level consistency** in most cases,  
+often achieving **lower positional error** than direct detection of all points through classical methods.
+
+
+## Executing Tests
+
+The project includes a dedicated testing pipeline located in **`scripts/test.py`**,  
+which performs automatic evaluation of the algorithm on a predefined dataset.
+
+The script should be executed as a **Python module**:
+
+```bash
+python -m scripts.test
+```
+
+The script accepts three optional arguments, all of which have default values aligned with the project’s internal directory structure:
+
+| **Argument**      | **Default value**         | **Description**                                                                             |
+| ----------------- | ------------------------- | ------------------------------------------------------------------------------------------- |
+| `config_dir`      | `config/test.config.json` | Path to the configuration file containing ground truth point definitions and test metadata. |
+| `pics_dir`        | `data/test`               | Directory containing input test images.                                                     |
+| `results_df_name` | `"test_df"`               | Base name of the CSV file with computed test metrics.                                       |
+
+```bash
+python -m scripts.test --config_dir config/custom_config.json --pics_dir data/custom --results_df_name custom_run
+```
+
+### Output
+After execution, the script produces:
+  - annotated test images with detected and ground truth points saved in results/test/<run_name>, where <run_name> corresponds to the value specified in the config.test.json file
+  - a CSV file containing per-point error values for each processed image
+
+### Summary generation
+To generate a statistical summary of all test runs, execute the summary script as a module:
+
+```bash
+python -m scripts.create_test_summary
+```
+
+This script:
+  - aggregates all CSV results generated by previous test runs,
+  - computes global error statistics (mean, median, and maximum errors),
+  - and saves the final merged summary CSV in results/test with a timestamp appended to its filename
+
+## Executing Run
+
+Once the testing phase is complete, you can run the algorithm on your own images to evaluate real-case performance or visualize detections on new data.
+
+#### Input setup
+
+Example input images are provided in the **`data/run`** directory.  
+Before running the algorithm, you may need to **adjust the input parameters** (thresholds, line detection sensitivity, etc.) to fit your image set.  
+A recommended configuration template is available in: `config/run.config.json`
+
+
+This file contains all the tunable parameters used during processing —  
+you can modify their values to match lighting conditions, camera angles, or court surface types.
+
+#### Running the algorithm
+
+To execute the main pipeline, make sure your **virtual environment is activated**, then run:
+
+```bash
+python main.py
+```
+
+The script will automatically:
+  - load all images from data/run,
+  - apply the detection and reconstruction pipeline using the provided configuration,
+  - and save all results — i.e., images with detected court lines and key points — to: `results/run/<timestamp>`
+
+
+Each execution creates a new folder labeled with the timestamp of the run, ensuring that results from multiple executions are stored separately and never overwritten.
+
+This mode is dedicated for experimenting with new photos, verifying algorithm robustness, and visually assessing detection accuracy on custom datasets.
