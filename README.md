@@ -9,26 +9,22 @@ The goal of this project is to accurately identify and extract the main lines, i
 
 
 Key libraries used:
-<ul> 
-  <li>numpy</li>
-  <li>opencv-python</li>
-  <li>matplotlib</li>
-  <li>pydantic</li>
-  <li>scikit-image</li>
-  <li>label-studio</li>
-</ul>
+- numpy
+- opencv-python
+- matplotlib
+- pydantic
+- scikit-image
+- label-studio
 
 Key computer vision concepts included:
-<ul> 
-  <li>color space analysis</li>
-  <li>binarization and thresholding</li>
-  <li>Canny Edge Detection</li>
-  <li>the Probabilistic Hough Transform (PHT)</li>
-  <li>morphological operations</li>
-  <li>skeletonization</li>
-  <li>contour detection</li>
-  <li>perspective transformation</li>
-</ul>
+- color space analysis
+- binarization and thresholding
+- Canny Edge Detection
+- the Probabilistic Hough Transform (PHT)
+- morphological operations
+- skeletonization
+- contour detection
+- perspective transformation
 
 
 ## Getting Started
@@ -98,6 +94,10 @@ Below are examples of tennis courts that **meet** and **do not meet** the projec
 
 </div>
 
+| **compliant** | **non-compliant** |
+|----------------|------------------|
+| <img src="assets/compliant-example.jpg" alt="Valid tennis court" width="300" height="200"> | <img src="assets/non-compliant-example.jpg" alt="Invalid tennis court" width="300" height="200"> |
+
 ## Objective
 
 The goal is to develop an algorithm using **classical computer vision techniques** that detects **12 key points** on a tennis court and connects them with **straight line segments** to delineate the **playing field** and its **sub-areas**.  
@@ -105,24 +105,23 @@ Each point has been assigned a **unique, unambiguous identifier** to avoid any a
 
 The images below provide a complete description of all target elements.
 
-![img](readme_assets/target_objects.jpg)
+![img](assets/target_objects.jpg)
 
 Key points with their names and explanations:
-<ol>
-    <li><span style="color:red">closer_outer_baseline_point</span> - the point closest to the camera, located at the intersection of the baseline and the outer doubles sideline.
-It should be the lowest point on the court in the image.</li>
-    <li>closer_outer_netline_point</li>
-    <li>further_outer_baseline_point</li>
-    <li>further_outer_netline_point</li>
-    <li>closer_inner_baseline_point</li>
-    <li>further_inner_baseline_point</li>
-    <li>closer_inner_netline_point</li>
-    <li>further_inner_netline_point</li>
-    <li>net_service_point</li>
-    <li>centre_service_point</li>
-    <li>further_service_point</li>
-    <li>closer_service_point</li>
-</ol>
+  1. `loser_outer_baseline_point` - the point closest to the camera, located at the intersection of the baseline and the outer doubles sideline.
+It should be the lowest point on the court in the image
+  2. `closer_outer_netline_point`
+  3. `further_outer_baseline_point`
+  4. `further_outer_netline_point`
+  5. `closer_inner_baseline_point`
+  6. `further_inner_baseline_point`
+  7. `closer_inner_netline_point`
+  8. `further_inner_netline_point`
+  9. `net_service_point`
+  10. `centre_service_point`
+  11. `further_service_point`
+  12. `closer_service_point`
+
 
 
 By connecting the corresponding points, we obtain the following lines that define the playing field and its main areas:
