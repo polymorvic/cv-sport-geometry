@@ -149,22 +149,22 @@ Result:<br>
 
 Next, from the previously detected **line segments**, we construct their corresponding **line equations** in the form:
 
-\[
-y = slope \times x + intercept
-\]
+$$
+y = \text{slope} \times x + \text{intercept}
+$$
 
-For each segment defined by two endpoints \((x_1, y_1)\) and \((x_2, y_2)\), the slope and intercept are calculated as:
+For each segment defined by two endpoints $(x_1, y_1)$ and $(x_2, y_2)$, the slope and intercept are calculated as:
 
-\[
-slope = \frac{y_2 - y_1}{x_2 - x_1}, \quad intercept = y_1 - slope \times x_1
-\]
+$$
+\text{slope} = \frac{y_2 - y_1}{x_2 - x_1}, \qquad \text{intercept} = y_1 - \text{slope} \times x_1
+$$
 
-A special case occurs when the line is **vertical** (\(x_2 = x_1\)), where the slope would be undefined.  
+A special case occurs when the line is **vertical** ($x_2 = x_1$), where the slope would be undefined.  
 Such lines are handled separately by representing them as:
 
-\[
-x = constant
-\]
+$$
+x = \text{constant}
+$$
 
 This distinction is crucial for further geometric computations, such as detecting intersections between horizontal, vertical, and diagonal lines on the court.
 
@@ -195,16 +195,17 @@ Each pair of lines is checked to determine whether they intersect within the bou
 The intersection logic accounts for both **regular** and **vertical** lines:
 
 - If two lines have the **same slope** or are **both vertical**, no intersection exists.  
-- If one line is **vertical** (`x = constant`), the intersection coordinates are computed directly from this `x` value and the other line’s equation \(y = slope \times x + intercept\).  
+- If one line is **vertical** (`x = constant`), the intersection coordinates are computed directly from this `x` value and the other line’s equation $y = \text{slope} \cdot x + \text{intercept}$.  
 - If both lines are **non-vertical**, their intersection point is computed analytically as:
-  \[
-  x = \frac{b_2 - b_1}{a_1 - a_2}, \quad y = a_1 \times x + b_1
-  \]
-  where \(a\) and \(b\) are the slopes and intercepts of the respective lines.
+
+$$
+x = \frac{b_2 - b_1}{a_1 - a_2}, \qquad y = a_1 \cdot x + b_1
+$$
+
+where $a$ and $b$ are the slopes and intercepts of the respective lines.
 
 After computing the point, its coordinates are validated to ensure it lies **within the image boundaries**.  
 Only valid intersections are kept — these represent **candidate key points** where real court lines cross on the image.
-
 Result:<br>
 ![line_groups](assets/pre4_intersections.png)
 
@@ -215,3 +216,4 @@ Each valid intersection is represented as an **`Intersection` object**, which st
 
 An example of a single intersection found below:<br>
 ![line_groups](assets/pre4_intersection_example.png)
+
