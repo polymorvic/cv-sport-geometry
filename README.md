@@ -4,7 +4,7 @@
 
 The goal of this project is to accurately identify and extract the main lines, intersections, and reference points on a tennis court from images. Details and assumptions in the next chapter.
 
-> **<span style="color:red">Note:</span>** This solution is **not intended for production use**.  
+> ⚠️ **NOTE:** This solution is **not intended for production use**.  
 > It is an experimental project aimed at evaluating how classical image processing techniques perform in detecting key points of a tennis court.
 
 
@@ -80,20 +80,6 @@ The project makes the following assumptions about the input images:
 
 Below are examples of tennis courts that **meet** and **do not meet** the project assumptions. In the non-compliant image, the far corner of the baseline is not visible.
 
-<div style="display: flex; justify-content: center; gap: 40px; text-align: center;">
-
-  <div>
-    <strong>compliant</strong><br>
-    <img src="assets/compliant-example.jpg" alt="Valid tennis court" width="300" height="200">
-  </div>
-
-  <div>
-    <strong>non-compliant</strong><br>
-    <img src="assets/non-compliant-example.jpg" alt="Invalid tennis court" width="300" height="200">
-  </div>
-
-</div>
-
 | **compliant** | **non-compliant** |
 |----------------|------------------|
 | <img src="assets/compliant-example.jpg" alt="Valid tennis court" width="300" height="200"> | <img src="assets/non-compliant-example.jpg" alt="Invalid tennis court" width="300" height="200"> |
@@ -108,32 +94,31 @@ The images below provide a complete description of all target elements.
 ![img](assets/target_objects.jpg)
 
 Key points with their names and explanations:
-  1. `loser_outer_baseline_point` - the point closest to the camera, located at the intersection of the baseline and the outer doubles sideline.
+  1. `closer_outer_baseline_point` - the point closest to the camera, located at the intersection of the baseline and the outer doubles sideline.
 It should be the lowest point on the court in the image
-  2. `closer_outer_netline_point`
-  3. `further_outer_baseline_point`
-  4. `further_outer_netline_point`
-  5. `closer_inner_baseline_point`
-  6. `further_inner_baseline_point`
-  7. `closer_inner_netline_point`
-  8. `further_inner_netline_point`
-  9. `net_service_point`
-  10. `centre_service_point`
-  11. `further_service_point`
-  12. `closer_service_point`
+  2. `closer_outer_netline_point` - the intersection point of the tennis court’s nearer doubles sideline with the net
+  3. `further_outer_baseline_point` - the opposite point to `closer_outer_baseline_point`, the intersection of the court’s far doubles sideline with the baseline
+  4. `further_outer_netline_point` - the point opposite to `closer_outer_netline_point` - the intersection of the court’s far doubles sideline with the net line
+  5. `closer_inner_baseline_point` - the intersection point of the court’s nearer singles sideline with the baseline
+  6. `further_inner_baseline_point`- the intersection point of the court’s far singles sideline with the baseline
+  7. `closer_inner_netline_point` - the intersection point of the court’s nearer singles sideline with the net line
+  8. `further_inner_netline_point` - the intersection point of the court’s far singles sideline with the net line
+  9. `net_service_point` - the intersection of the center service line with the net line
+  10. `centre_service_point` - the intersection of the service line (parallel to the net) with the center service line
+  11. `further_service_point` - the intersection of the court’s far singles sideline with the service line
+  12. `closer_service_point` - the intersection of the court’s nearer singles sideline with the service line
 
 
 
 By connecting the corresponding points, we obtain the following lines that define the playing field and its main areas:
-<ol>
-    <li>closer_outer_sideline</li>
-    <li>baseline</li>
-    <li>netline</li>
-    <li>further_outer_sideline</li>
-    <li>closer_inner_sideline</li>
-    <li>further_inner_sideline</li>
-    <li>centre_service_line</li>
-    <li>service_line</li>
-</ol>
+  - `closer_outer_sideline` - the court’s nearer doubles sideline, it connects `closer_outer_baseline_point` with `closer_outer_netline_point`
+  - `baseline` - connects `closer_outer_baseline_point` with `further_outer_baseline_point`
+  - `netline` - the line representing the court’s net, it connects `closer_outer_netline_point` with `further_outer_netline_point`
+  - `further_outer_sideline` - the court’s far doubles sideline, it connects `further_outer_baseline_point` with `further_outer_netline_point`
+  - `closer_inner_sideline` - the court’s nearer singles sideline, it connects `closer_inner_baseline_point` with `closer_inner_netline_point` 
+  - `further_inner_sideline` - the court’s far singles sideline, it connects `further_inner_baseline_point` with `further_inner_netline_point`
+  - `centre_service_line` - the line representing the court’s center service line, it connects `centre_service_point` with `net_service_point` 
+  - `service_line` - the line representing the court’s service line (parallel to the net), it connects `closer_service_point` with `further_service_point`
+
 
 
