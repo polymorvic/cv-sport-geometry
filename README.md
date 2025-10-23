@@ -437,7 +437,9 @@ Lower values indicate higher geometric precision of the detection.
 
 The evaluation results across the 6 test images are summarized as follows:
 
-PLACEHOLDER -----
+Average point distance errors (in pixels) between detected and ground truth points for six images. On average, the solution deviates by about 4–5 px, with the lowest errors (<3 px) for closer and inner points and the highest variability (up to 10–15 px) for further and service points. The algorithm performed best on test6.jpg, showing the most accurate detections, and worst on test5.jpg, where several large errors (>35 px) occurred.
+
+Full results available in: [`results/tests/test_summary_2025-10-23-12-38-41.csv`](results/tests/test_summary_2025-10-23-12-38-41.csv)
 
 ## Perspective Transformation
 
@@ -446,15 +448,19 @@ In the final stage of processing, the algorithm performs a **perspective transfo
 To achieve this, a **synthetic reference court** is first created — a perfectly scaled, flat representation of a tennis court with all key structural elements (outer and inner sidelines, baselines, service lines, and the net/center lines).  
 Each of its characteristic points is defined in precise metric proportions, forming a **reference coordinate system** that serves as a geometric template for real images.
 
+<img src="assets/ref_img.png" alt="reference tennis court" width="150" height="300">
+
 Once this reference model is built, the algorithm performs a **homography-based perspective warp** between:
 - a selected subset of **corresponding points** (usually at least four) detected in the input image, and  
 - the **reference points** from the synthetic court.
 
-Using these pairs, the transformation matrix (homography) is estimated, enabling the algorithm to:
+Using these pairs, the transformation homography matrix is estimated, enabling the algorithm to:
 - **project all remaining reference points** into the image plane, and  
 - **overlay the synthetic court** onto the detected court in the original image.
 
 This process makes it possible to reconstruct the **entire geometry** of the court even when only a **minimum number of points** (typically four or more) are found directly by the detection algorithm — the rest are obtained automatically through projection.
+
+![perspective-transform-projection](assets/projected_points.png)
 
 The same procedure also allows for **quantitative error evaluation**:  
 the projected points obtained through perspective transformation are compared against their **ground truth** positions, and their pixel-level deviations are measured under various scenarios.  
@@ -464,24 +470,17 @@ Overall, the perspective transformation step ensures full geometric consistency 
 
 ### Projection Error Summary
 
-The quantitative evaluation of the **perspective transformation** was performed across multiple test configurations, each using a different subset of detected points for homography estimation.  
-For every configuration, all remaining reference points were projected onto the image and compared with their ground truth locations.
+The quantitative evaluation of the **perspective transformation** was performed across multiple test configurations, each using a different subset of detected points for homography estimation. For every configuration, all remaining reference points were projected onto the image and compared with their ground truth locations.
 
-Among all tested setups, the **best-performing scenario** — using four high-confidence corner points  
-(`closer_outer_baseline_point`, `further_outer_baseline_point`, `closer_outer_netline_point`, and `further_outer_netline_point`) — achieved the following results:
+Among all tested setups, the **best-performing scenario** — using four high-confidence corner points (`closer_outer_baseline_point`, `further_outer_baseline_point`, `closer_outer_netline_point`, and `further_outer_netline_point`) — achieved the following results:
 
 PLACEHOLDER ---
 
-These results confirm that under optimal conditions,  
-the **homography-based perspective transformation** allows the algorithm to reconstruct  
-the full set of key points with **subpixel-level consistency** in most cases,  
-often achieving **lower positional error** than direct detection of all points through classical methods.
-
+These results confirm that under optimal conditions, the **homography-based perspective transformation** allows the algorithm to reconstruct the full set of key points with **subpixel-level consistency** in most cases, often achieving **lower positional error** than direct detection of all points through classical methods.
 
 ## Executing Tests
 
-The project includes a dedicated testing pipeline located in **`scripts/test.py`**,  
-which performs automatic evaluation of the algorithm on a predefined dataset.
+The project includes a dedicated testing pipeline located in **`scripts/test.py`**, which performs automatic evaluation of the algorithm on a predefined dataset.
 
 The script should be executed as a **Python module**:
 
@@ -524,13 +523,9 @@ Once the testing phase is complete, you can run the algorithm on your own images
 
 #### Input setup
 
-Example input images are provided in the **`data/run`** directory.  
-Before running the algorithm, you may need to **adjust the input parameters** (thresholds, line detection sensitivity, etc.) to fit your image set.  
-A recommended configuration template is available in: `config/run.config.json`
+Example input images are provided in the **`data/run`** directory. Before running the algorithm, you may need to **adjust the input parameters** (thresholds, line detection sensitivity, etc.) to fit your image set. A recommended configuration template is available in: `config/run.config.json`
 
-
-This file contains all the tunable parameters used during processing —  
-you can modify their values to match lighting conditions, camera angles, or court surface types.
+This file contains all the tunable parameters used during processing — you can modify their values to match lighting conditions, camera angles, or court surface types.
 
 #### Running the algorithm
 
