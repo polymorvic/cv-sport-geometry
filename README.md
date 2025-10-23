@@ -121,4 +121,97 @@ By connecting the corresponding points, we obtain the following lines that defin
   - `service_line` - the line representing the court’s service line (parallel to the net), it connects `closer_service_point` with `further_service_point`
 
 
+## Algorithm Overview
 
+### 1. Preliminary Image Processing
+
+The purpose of the preprocessing stage is to **load the image and detect the line segments** that will later be merged into full **court lines**. The lines will then be used to compute their **intersection points**, which represent **potential key locations** on the tennis court.
+
+#### 1.1 Image Loading and Line Segment Detection
+
+At this stage, images are **loaded from the input directory**.
+
+The main preprocessing logic focuses on detecting **straight line segments** on the court image. These segments form the geometric basis for later steps, where full lines and their intersection points (potential key points) will be determined.
+
+The following steps are applied:
+1. **Convert to grayscale** – simplifies the image to intensity values.  
+2. **Apply Gaussian blur** – removes small noise and smooths edges.  
+3. **Run Canny edge detection** – produces a binary edge map highlighting white court lines.  
+4. **Apply Probabilistic Hough Transform (`cv2.HoughLinesP`)** – detects line segments as pairs of endpoints `[x1, y1, x2, y2]`.  
+   - `threshold` – minimum number of votes for a valid line,  
+   - `minLineLength` – minimum accepted segment length,  
+   - `maxLineGap` – maximum gap between merged segments.
+
+Result:<br>
+![pht](assets/pre1_pht_line_segments.png)
+
+#### 1.2 Computing Line Equation
+
+Next, from the previously detected **line segments**, we construct their corresponding **line equations** in the form:
+
+\[
+y = slope \times x + intercept
+\]
+
+For each segment defined by two endpoints \((x_1, y_1)\) and \((x_2, y_2)\), the slope and intercept are calculated as:
+
+\[
+slope = \frac{y_2 - y_1}{x_2 - x_1}, \quad intercept = y_1 - slope \times x_1
+\]
+
+A special case occurs when the line is **vertical** (\(x_2 = x_1\)), where the slope would be undefined.  
+Such lines are handled separately by representing them as:
+
+\[
+x = constant
+\]
+
+This distinction is crucial for further geometric computations, such as detecting intersections between horizontal, vertical, and diagonal lines on the court.
+
+Result:<br>
+![lines](assets/pre2_lines_computing.png)
+
+
+#### 1.3 Line Grouping and Approximation
+
+After computing individual line equations, similar lines are **grouped and approximated** to reduce redundancy and noise.  
+Lines that share a **similar orientation (angle)** and **position (intercept or x-value)** are considered part of the same group.
+
+Within each group, an **approximated representative line** is created:
+- For **non-vertical lines**, the approximation is based on the **median slope** and **median intercept**.  
+- For **vertical lines**, the **median x-coordinate** is used instead.
+
+This process effectively merges overlapping or nearly parallel segments into a smaller, cleaner set of lines that accurately represent the main court boundaries.
+
+Result:<br>
+![line_groups](assets/pre3_lines_grouping.png)
+
+
+#### 1.4 Line Intersection Point Creation
+
+Once the main court lines are approximated, the next step is to **compute intersection points** between all pairs of grouped lines.  
+Each pair of lines is checked to determine whether they intersect within the bounds of the image — if so, the intersection is recorded as a new point.
+
+The intersection logic accounts for both **regular** and **vertical** lines:
+
+- If two lines have the **same slope** or are **both vertical**, no intersection exists.  
+- If one line is **vertical** (`x = constant`), the intersection coordinates are computed directly from this `x` value and the other line’s equation \(y = slope \times x + intercept\).  
+- If both lines are **non-vertical**, their intersection point is computed analytically as:
+  \[
+  x = \frac{b_2 - b_1}{a_1 - a_2}, \quad y = a_1 \times x + b_1
+  \]
+  where \(a\) and \(b\) are the slopes and intercepts of the respective lines.
+
+After computing the point, its coordinates are validated to ensure it lies **within the image boundaries**.  
+Only valid intersections are kept — these represent **candidate key points** where real court lines cross on the image.
+
+Result:<br>
+![line_groups](assets/pre4_intersections.png)
+
+
+Each valid intersection is represented as an **`Intersection` object**, which stores:
+- the **(x, y)** coordinates of the intersection point, and  
+- references to the **two lines** that intersect at that point
+
+An example of a single intersection found below:<br>
+![line_groups](assets/pre4_intersection_example.png)
