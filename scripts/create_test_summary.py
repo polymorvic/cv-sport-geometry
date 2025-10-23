@@ -1,5 +1,4 @@
 from pathlib import Path
-from pprint import pprint
 
 import numpy as np
 import pandas as pd
@@ -21,9 +20,6 @@ def run(root_test_dir: Path = Path("results/tests"), n_recent: int | None = None
     Args:
         root_test_dir: Directory containing test run results.
         n_recent: Optional number of most recent runs to include.
-
-    Returns:
-        None. Prints and saves the summary CSV.
     """
     dfs = []
     tuple_colnames = []
@@ -82,8 +78,6 @@ def run(root_test_dir: Path = Path("results/tests"), n_recent: int | None = None
     stats_rows = pd.DataFrame(rows, columns=merged_df.columns)
     merged_df = pd.concat([merged_df, stats_rows], ignore_index=True)
     merged_df.to_csv(root_test_dir / f"test_summary_{TIMESTAMP_STRING}.csv", index=False)
-    pprint(merged_df)
-
 
 if __name__ == "__main__":
     tyro.cli(run)
