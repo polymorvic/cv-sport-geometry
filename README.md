@@ -552,7 +552,7 @@ Baseline and Scenarios
 #### Conclusion
 **Scenario 2** produced the best results — it was not necessary to detect all points directly with the algorithm to achieve stable and accurate outcomes. Detecting the majority of points with the algorithm and obtaining the remaining ones using a perspective transformation proved sufficient to ensure both precision and consistency.
 
-trans per jako dodatkowy krok po wykonaniu algorytmu znalezienia punktow
+The perspective-transformation-based projection of tennis court key points can be considered as an additional step after detecting all points, aimed at improving the overall precision of the solution.
 
 ## Executing Tests
 
