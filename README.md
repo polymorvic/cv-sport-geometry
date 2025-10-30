@@ -1,6 +1,6 @@
 # CV Sport Geometry
 
-**CV Sport Geometry** is a computer vision project that detects key points and geometric structures of **tennis courts** using **NumPy**, **classical computer vision algorithms and techniques**, and **mathematical concepts** such as **linear algebra** - no neural network applied.
+**CV Sport Geometry** is a computer vision project that detects key points and geometric structures of **tennis courts** using **NumPy**, **classical computer vision algorithms and techniques**, and **mathematical concepts** such as **linear algebra** - no neural networks applied.
 
 The goal of this project is to accurately identify and extract the main lines, intersections, and reference points on a tennis court from images. Details and assumptions in the next chapter.
 
@@ -20,7 +20,7 @@ Key computer vision concepts included:
 - color space analysis
 - binarization and thresholding
 - Canny Edge Detection
-- the Probabilistic Hough Transform (PHT)
+- the Probabilistic Hough Transform
 - morphological operations
 - skeletonization
 - contour detection
@@ -169,8 +169,8 @@ The main preprocessing logic focuses on detecting **straight line segments** on 
 
 The following steps are applied:
 1. **Convert to grayscale** – simplifies the image to intensity values.  
-2. **Apply Gaussian blur** – removes small noise and smooths edges.  
-3. **Run Canny edge detection** – produces a binary edge map highlighting white court lines.  
+2. **Apply Gaussian blur** – removes small noise. 
+3. **Run Canny edge detection** – produces a binary edge map highlighting white court line edges.  
 4. **Apply Probabilistic Hough Transform (`cv2.HoughLinesP`)** – detects line segments as pairs of endpoints `[x1, y1, x2, y2]`.  
    - `threshold` – minimum number of votes for a valid line,  
    - `minLineLength` – minimum accepted segment length,  
@@ -179,9 +179,9 @@ The following steps are applied:
 Result:<br>
 ![pht](assets/pre1_pht_line_segments.png)
 
-#### 1.2 Computing Line Equation
+#### 1.2 Computing Linear Function Representations
 
-Next, from the previously detected **line segments**, we construct their corresponding **line equations** in the form:
+Next, from the previously detected **line segments**, we construct their corresponding **linear function representations** in the form:
 
 $$
 y = \text{slope} \times x + \text{intercept}
@@ -208,7 +208,7 @@ Result:<br>
 
 #### 1.3 Line Grouping and Approximation
 
-After computing individual line equations, similar lines are **grouped and approximated** to reduce redundancy and noise.  
+After computing individual linear function representations, similar lines are **grouped and approximated** to reduce redundancy and noise.  
 Lines that share a **similar orientation (angle)** and **position (intercept or x-value)** are considered part of the same group.
 
 Within each group, an **approximated representative line** is created:
@@ -223,7 +223,7 @@ Result:<br>
 
 #### 1.4 Line Intersection Point Creation
 
-Once the main court lines are approximated, the next step is to **compute intersection points** between all pairs of grouped lines.  
+Once the main court lines are approximated, the next step is to **compute intersection points** between all pairs of line groups. From now on, line groups will be referenced just as "lines" for simplicity.
 Each pair of lines is checked to determine whether they intersect within the bounds of the image — if so, the intersection is recorded as a new point.
 
 The intersection logic accounts for both **regular** and **vertical** lines:
@@ -255,7 +255,7 @@ An example of a single intersection found below:<br>
 
 At initialization, all detected intersections are **deduplicated and sorted** in descending order of their vertical position (`y` coordinate):  
 points closer to the bottom of the image (i.e., closer to the camera) come first.  
-This ordered list is stored in **`self.intersections`** and serves as the starting dataset for locating specific court features.
+This ordered list is stored in **`intersections`** attribute of `CourtFinder` object and serves as the starting dataset for locating specific court features.
 
 The algorithm first iterates through all detected intersections and filters those located on the **outer baseline side** of the court (angles between 90° and 270°).  
 For each candidate intersection:
@@ -348,7 +348,7 @@ Goal: find the **inner pair** of intersections on the selected endline — i.e.,
 
 How it works (common logic):
 - **Choose context**: run in **`base`** or **`net`** mode. Each mode sets the **start point**, the **endline** to scan along, and the **far outer reference point** (for dedup tolerance).
-- **Traverse along the endline** (window by window), with an initial **warm-up** to skip unstable steps.
+- **Traverse along the endline** (window by window), with an initial **warm-up** to skip first, routine steps, where nothing will be found due to proximity to the starting point.
 - In each window:
   - Convert to **grayscale**, build a **binary mask** using a local threshold `bin_thresh · max(gray)`.
   - **Detect lines with slope opposite** to the scanned endline (Canny → Hough), then **group** them.
@@ -379,7 +379,7 @@ the line that divides the two service boxes and intersects the net.
 The algorithm:
 - Starts from the **midpoint between the inner sidelines**, which defines the approximate search zone for the court’s **centre line**.  
 - Extracts a **narrow vertical region** around this area and applies **edge detection** (Canny) followed by the **Probabilistic Hough Transform** to find thin, nearly vertical line segments.  
-- Groups detected segments and selects the most stable one — the **centre service line**.  
+- Groups detected segments and selects the most probable one — the **centre service line**. It means that found line should be parallel to both netline and baseline.
 - Computes its **intersection with the net line**, defining the `net_service_point` (the midpoint on the net where both service boxes meet).  
 - Validates the detection based on geometric symmetry: the identified centre line must lie roughly halfway between the two inner sidelines.
 
@@ -451,10 +451,10 @@ Each of its characteristic points is defined in precise metric proportions, form
 <img src="assets/ref_img.png" alt="reference tennis court" width="150" height="300">
 
 Once this reference model is built, the algorithm performs a **homography-based perspective warp** between:
-- a selected subset of **corresponding points** (usually at least four) detected in the input image, and  
+- a selected subset of **corresponding points** (at least four) detected in the input image, and  
 - the **reference points** from the synthetic court.
 
-Using these pairs, the transformation homography matrix is estimated, enabling the algorithm to:
+Using these pairs, the transformation homography matrix is calculated, enabling the algorithm to:
 - **project all remaining reference points** into the image plane, and  
 - **overlay the synthetic court** onto the detected court in the original image.
 
@@ -472,11 +472,87 @@ Overall, the perspective transformation step ensures full geometric consistency 
 
 The quantitative evaluation of the **perspective transformation** was performed across multiple test configurations, each using a different subset of detected points for homography estimation. For every configuration, all remaining reference points were projected onto the image and compared with their ground truth locations.
 
-Among all tested setups, the **best-performing scenario** — using four high-confidence corner points (`closer_outer_baseline_point`, `further_outer_baseline_point`, `closer_outer_netline_point`, and `further_outer_netline_point`) — achieved the following results:
+#### Weighted Error Calculation
 
-PLACEHOLDER ---
+The error is computed using a weighted mean, where each point type has an assigned weight as shown below:
 
-These results confirm that under optimal conditions, the **homography-based perspective transformation** allows the algorithm to reconstruct the full set of key points with **subpixel-level consistency** in most cases, often achieving **lower positional error** than direct detection of all points through classical methods.
+| Point Type                   | Weight |
+| ---------------------------- | :----: |
+| closer_outer_baseline_point  |    1   |
+| closer_inner_baseline_point  |    2   |
+| closer_outer_netpoint        |    3   |
+| further_outer_baseline_point |    4   |
+| further_inner_baseline_point |    5   |
+| closer_inner_netpoint        |    6   |
+| further_outer_netpoint       |    7   |
+| further_inner_netpoint       |    7   |
+| net_service_point            |    7   |
+| centre_service_point         |    4   |
+| further_service_point        |    4   |
+| closer_service_point         |    4   |
+
+The penalty for each point increases with its distance from the camera, as points located farther away are more difficult to detect accurately in the image.
+
+
+Baseline and Scenarios
+
+- Baseline — all points are detected directly by the algorithm.
+
+- **Scenario 1** — the following points are detected by the algorithm:
+  1. `closer_outer_baseline_point`
+  2. `closer_outer_netline_point`
+  3. `closer_inner_netline_point`
+  4. `closer_inner_baseline_point`<br>
+  All remaining points are obtained using a perspective transformation
+
+- **Scenario 2** — the following points are detected by the algorithm:
+  1. `closer_outer_baseline_point`
+  2. `closer_inner_baseline_point`
+  3. `further_inner_baseline_point`
+  4. `further_outer_baseline_point`
+  5. `further_outer_netline_point`
+  6. `net_service_point`
+  7. `closer_inner_netline_point`
+  8. `closer_outer_netline_point`<br>
+  All remaining points are obtained using a perspective transformation
+
+- **Scenario 3** — the following points are detected by the algorithm:
+  1. `closer_outer_baseline_point`
+  2. `closer_inner_baseline_point`
+  3. `closer_service_point`
+  4. `centre_service_point`
+  5. `further_service_point`<br>
+  All remaining points are obtained using a perspective transformation
+
+
+- **Scenario 4** — the following points are detected by the algorithm:
+  1. `further_outer_baseline_point`
+  2. `further_inner_baseline_point`
+  3. `further_service_point`
+  4. `centre_service_point`
+  5. `net_service_point`<br>
+  All remaining points are obtained using a perspective transformation
+
+
+| method     | min  |  max  |  mean | median |  std  |
+|-------------|------|-------|-------|---------|-------|
+| baseline    | 2.15 | 22.53 |  7.82 |   5.44  |  7.46 |
+| scenario1   | 6.95 | 47.27 | 19.93 |  14.79  | 14.72 |
+| scenario2   | 1.83 | 10.01 |  5.58 |   4.29  |  3.28 |
+| scenario3   | 5.85 | 32.75 | 13.32 |   8.59  | 10.53 |
+| scenario4   | 2.96 | 31.15 | 14.23 |  11.89  | 10.71 |
+
+#### Summary
+- **Baseline** — Average error: 7.82 px ± 7.46 px (SD), which means that the typical error falls within the range of approximately **0.4 px to 15.3 px**
+- **Scenario 1** — Average error: 19.93 px ± 14.72 px (SD), which means that the typical error falls within the range of approximately **5.2 px to 34.7 px**
+- **Scenario 2** — Average error: 5.58 px ± 3.28 px (SD), which means that the typical error falls within the range of approximately **2.3 px to 8.9 px**
+- **Scenario 3** — Average error: 13.32 px ± 10.53 px (SD), which means that the typical error falls within the range of approximately **2.8 px to 23.9 px**
+- **Scenario 4** — Average error: 14.23 px ± 10.71 px (SD), which means that the typical error falls within the range of approximately **3.5 px to 24.9 px**
+
+#### Conclusion
+**Scenario 2** produced the best results — it was not necessary to detect all points directly with the algorithm to achieve stable and accurate outcomes. Detecting the majority of points with the algorithm and obtaining the remaining ones using a perspective transformation proved sufficient to ensure both precision and consistency.
+
+trans per jako dodatkowy krok po wykonaniu algorytmu znalezienia punktow
 
 ## Executing Tests
 
@@ -519,7 +595,7 @@ This script:
 
 ## Executing Run
 
-Once the testing phase is complete, you can run the algorithm on your own images to evaluate real-case performance or visualize detections on new data.
+You can run the algorithm on your own images to evaluate real-case performance or visualize detections on new data.
 
 #### Input setup
 
